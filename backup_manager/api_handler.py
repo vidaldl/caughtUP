@@ -43,3 +43,20 @@ class CanvasAPIHandler:
         except Exception as e:
             logging.error(f"Token validation failed: {e}")
             return False
+
+
+    def fetch_course_details(self, course_url: str):
+        """Fetches the course name and ID from a given Canvas course URL."""
+        try:
+            # Extract course ID from the URL
+            course_id = course_url.split("/courses/")[-1]
+            endpoint = f"/api/v1/courses/{course_id}"
+            course_data = self.make_request(endpoint)
+
+            course_name = course_data.get("name", "Unknown Course")
+            logging.info(f"Fetched course details: {course_name} (ID: {course_id})")
+            return {"course_name": course_name, "course_id": course_id}
+
+        except Exception as e:
+            logging.error(f"Failed to fetch course details for URL {course_url}: {e}")
+            return None
