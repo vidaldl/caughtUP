@@ -19,3 +19,4 @@ ignore/
 # Token
 resources/token.enc
 resources/key.key
+resources/config.txt
