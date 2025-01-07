@@ -8,12 +8,13 @@ class CSVValidator:
     def validate(self):
         """Validates the structure and content of the CSV file."""
         try:
-            with open(self.filepath, "r") as csvfile:
+            with open(self.filepath, "r", encoding="utf-8-sig") as csvfile:
                 reader = csv.reader(csvfile)
 
                 # Check header
                 header = next(reader, None)
                 if not header or len(header) < 2 or header[:2] != ["Course Name", "Course Link"]:
+                    print(header[:2])
                     logging.error("CSV validation failed: Incorrect header structure.")
                     return False, "Invalid CSV structure. Expected 'Course Name' and 'Course Link' columns."
 
