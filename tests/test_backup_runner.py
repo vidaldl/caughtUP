@@ -10,11 +10,11 @@ logging.basicConfig(
 )
 
 # Replace with your Canvas LMS base URL, API token, and course details
-BASE_URL = "https://<institution>.instructure.com"
-API_TOKEN = "<your_api_token>"
-OUTPUT_DIR = "backups"
-COURSE_NAME = "Sample Course"
-COURSE_ID = "12345"
+BASE_URL = "https://<INSTANCE>.instructure.com:443"
+API_TOKEN = "<API Token>"
+OUTPUT_DIR = "C:...Directory here"
+COURSE_NAME = "Course Name"
+COURSE_ID = "Course ID"
 
 if __name__ == "__main__":
     api_handler = CanvasAPIHandler(BASE_URL, API_TOKEN)
