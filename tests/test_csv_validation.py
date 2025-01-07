@@ -1,4 +1,12 @@
 from backup_manager.csv_validator import CSVValidator
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
 # Replace with the path to your test CSV file
 CSV_FILEPATH = "ignore/test_courses.csv"

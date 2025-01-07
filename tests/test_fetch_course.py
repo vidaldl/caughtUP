@@ -1,4 +1,12 @@
 from backup_manager.api_handler import CanvasAPIHandler
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()]
+)
 
 # Replace with your Canvas LMS base URL and API token
 BASE_URL = "https://byui.instructure.com:443/"
