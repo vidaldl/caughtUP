@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+import csv
 from gui.menu_bar import MenuBar
 
 class MainInterface:
@@ -9,7 +10,11 @@ class MainInterface:
 
         # Set the window title and dynamic size
         self.root.title("Course Backup Manager")
-        self.root.geometry(f"{self.root.winfo_screenwidth() // 2}x{self.root.winfo_screenheight() // 2}")
+
+        # Load preferred size or use default dynamic size
+        preferred_width = 800  # Example: default width
+        preferred_height = 600  # Example: default height
+        self.root.geometry(f"{preferred_width}x{preferred_height}")
 
         # Add the menu bar
         self.menu_bar = MenuBar(root, token_manager)
@@ -99,16 +104,37 @@ class MainInterface:
             )
         )
         if file_path:
-            self.csv_label.config(text=file_path)
-            self.start_button.config(state=tk.NORMAL)  # Enable start button
+            try:
+                with open(file_path, "r", encoding="utf-8") as csv_file:
+                    reader = csv.DictReader(csv_file)
+                    if "Course Name" not in reader.fieldnames or "Course Link" not in reader.fieldnames:
+                        raise ValueError("The selected file does not have the required columns: 'Course Name' and 'Course Link'. Please check the file and try again.")
+
+                    self.clear_table()
+                    for row in reader:
+                        self.table.insert("", tk.END, values=(row["Course Name"], "Pending", "0%"))
+
+                    self.csv_label.config(text=file_path)
+                    self.start_button.config(state=tk.NORMAL)  # Enable start button
+            except FileNotFoundError:
+                messagebox.showerror("CSV Error", "The selected file could not be found. Please try again.")
+            except ValueError as ve:
+                messagebox.showerror("CSV Error", str(ve))
+            except Exception as e:
+                messagebox.showerror("CSV Error", f"An unexpected error occurred: {e}")
         else:
-            messagebox.showerror("File Selection Error", "No file was selected.")
+            messagebox.showerror("File Selection Error", "No file was selected. Please choose a valid CSV file.")
+
+    def clear_table(self):
+        for item in self.table.get_children():
+            self.table.delete(item)
 
     def start_backup(self):
         # Placeholder for backup functionality
         if self.csv_label.cget("text") == "No file selected":
             messagebox.showerror("Start Backup Error", "Please select a CSV file before starting the backup.")
         else:
+            self.start_button.config(state=tk.DISABLED)  # Disable start button during backup
             messagebox.showinfo("Start Backup", "Backup process started.")
 
     def retry_failed(self):
@@ -118,3 +144,4 @@ class MainInterface:
     def stop_backup(self):
         # Placeholder for stop functionality
         messagebox.showinfo("Stop Backup", "Backup process stopped.")
+        self.start_button.config(state=tk.NORMAL)  # Re-enable start button
