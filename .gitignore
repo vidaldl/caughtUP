@@ -15,6 +15,7 @@ env/
 Thumbs.db
 
 ignore/
+backups/
 
 # Token
 resources/token.enc
