@@ -9,8 +9,8 @@ logging.basicConfig(
 )
 
 # Replace with your Canvas LMS base URL and API token
-BASE_URL = "https://byui.instructure.com:443"
-API_TOKEN = "##########"
+BASE_URL = "https://<institution>.instructure.com:443"
+API_TOKEN = "<your_api_token>"
 
 if __name__ == "__main__":
     handler = CanvasAPIHandler(BASE_URL, API_TOKEN)
