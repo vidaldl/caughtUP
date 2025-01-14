@@ -34,6 +34,7 @@ class BackupManager:
         for item in self.table.get_children():
             course_name = self.table.item(item)['values'][0]
             course_id = self.table.item(item)['values'][1]
+            print(self.table.item(item))
 
             if item in self.interrupted_items:
                 self.table.item(item, values=(course_name, course_id, "Resuming", "0%"))

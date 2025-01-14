@@ -44,26 +44,54 @@ class BackupRunner:
 
     def trigger_course_export(self, course_id: str):
         endpoint = f"/api/v1/courses/{course_id}/content_exports"
+        
+        # Get the current date
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
+        # Make a GET request to check for existing content exports
+        response = self.api_handler.make_request(endpoint, method="GET")
+        exports = response if isinstance(response, list) else response.get("content_exports", [])
+        
+        # Check if there is an export created today
+        for export in exports:
+            created_at = export.get("created_at", "")
+            if created_at.startswith(current_date):
+                logging.info(f"Found existing export for course ID: {course_id} created on {current_date}")
+                return export.get("id")
+        
+        # If no export found for today, create a new one
         data = {"export_type": "common_cartridge"}
         response = self.api_handler.make_request(endpoint, method="POST", data=data)
         return response.get("id")
 
     def poll_export_status(self, course_id: str, export_id: str, status_callback, course_name):
         endpoint = f"/api/v1/courses/{course_id}/content_exports/{export_id}"
-        for _ in range(30):
-            response = self.api_handler.make_request(endpoint)
-            progress = response.get("progress", 0)
-            attachment = response.get("attachment")
+        response = self.api_handler.make_request(endpoint)
+        progress_url = response.get("progress_url")
 
-            if attachment and "url" in attachment:
-                file_url = attachment["url"]
-                return file_url
+        if not progress_url:
+            logging.error(f"No progress URL found for course ID: {course_id}")
+            return None
+
+        for _ in range(300):  # Polling for up to 300 seconds (5 minutes)
+            stripped_progress_url = progress_url.replace("https://byui.instructure.com", "")
+            progress_response = self.api_handler.make_request(stripped_progress_url)
+            progress = progress_response.get("completion", 0)
+            workflow_state = progress_response.get("workflow_state")
 
             if status_callback:
                 status_callback(course_name, "Backing up", progress)
 
-            logging.info(f"Polling export status: {progress}% completed...")
-            time.sleep(5)
+            logging.info(f"Polling progress status: {progress}% completed...")
+
+            if workflow_state == "completed":
+                final_response = self.api_handler.make_request(endpoint)
+                attachment = final_response.get("attachment")
+                if attachment and "url" in attachment:
+                    file_url = attachment["url"]
+                    return file_url
+
+            time.sleep(1)
 
         logging.error(f"Export timed out for course ID: {course_id}")
         return None
