@@ -159,9 +159,16 @@ class BackupRunner:
             logging.info(f"Deleted old backup: {oldest_backup}")
 
     async def process_queue(self, queue: asyncio.Queue):
-        """Process tasks from the queue with concurrency control."""
-        while not queue.empty():
-            course_name, course_id, status_callback = await queue.get()
-            async with self.semaphore:
-                await self.run_backup(course_name, course_id, status_callback)
-            queue.task_done()
+        """Process tasks from the queue concurrently with a concurrency limit."""
+        async def worker():
+            while not queue.empty():
+                course_name, course_id, status_callback = await queue.get()
+                async with self.semaphore:
+                    await self.run_backup(course_name, course_id, status_callback)
+                queue.task_done()
+
+        # Create a list of worker tasks
+        workers = [asyncio.create_task(worker()) for _ in range(self.concurrency_limit)]
+
+        # Wait for all worker tasks to complete
+        await asyncio.gather(*workers)
