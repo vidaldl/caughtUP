@@ -1,4 +1,4 @@
-import time
+import os
 from tkinter import messagebox
 from backup_manager.api_handler import CanvasAPIHandler
 from backup_manager.backup_runner import BackupRunner
@@ -13,6 +13,19 @@ class BackupManager:
         self.api_handler = None
         self.backup_runner = None
 
+    def get_backup_directory(self):
+        """Retrieve the user-selected backup directory from the config file."""
+        config_file = "resources/config.txt"
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, "r") as f:
+                    for line in f:
+                        if line.startswith("backup_folder="):
+                            return line.split("=", 1)[1].strip()
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load backup directory: {e}")
+        return "backups"  # Default to "backups" if not set
+
     def start_backup(self):
         if self.is_running:
             return
@@ -24,7 +37,7 @@ class BackupManager:
 
         base_url = self.main_interface.token_manager.base_url
         api_token = self.main_interface.token_manager.get_token()
-        output_dir = "backups"
+        output_dir = self.get_backup_directory()  # Get the dynamic backup directory
 
         async def async_start_backup():
             self.api_handler = CanvasAPIHandler(base_url, api_token)

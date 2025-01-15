@@ -11,8 +11,8 @@ logging.basicConfig(
 )
 
 # Replace with your Canvas LMS base URL, API token, and course details
-BASE_URL = "https://byui.instructure.com:443"
-API_TOKEN = "10706~48ZV6PXZ6QBLum4yC9RF6Re8xnZJ43CCcffaE8GeQekDxcrrTczG7kJ4tn37fYGP"
+BASE_URL = "https://<isntance>.instructure.com:443"
+API_TOKEN = "123123"
 OUTPUT_DIR = "backups"
 COURSES = [
     {"name": "Course 1", "id": "160084"},
