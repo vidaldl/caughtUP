@@ -4,16 +4,12 @@ import logging
 from aiohttp import ClientSession, ClientTimeout
 
 class CanvasAPIHandler:
-    def __init__(self, base_url: str, api_token: str, concurrency_limit: int = 10):
+    def __init__(self, base_url: str, api_token: str):
         self.base_url = base_url.rstrip("/")
         self.api_token = api_token
         self.headers = {
             "Authorization": f"Bearer {api_token}"
         }
-        self.semaphore = asyncio.Semaphore(concurrency_limit)  # Concurrency control
-        self.session = ClientSession(headers=self.headers, timeout=ClientTimeout(total=30))
-        self.rate_limit_delay = 0.09  # 90ms between requests
-
 
     async def make_request(self, endpoint: str, method: str = "GET", params: dict = None, data: dict = None):
         """Reusable function for making async API calls."""
