@@ -8,6 +8,7 @@ class TokenManager:
         self.base_url = base_url
         self.token_file = token_file
         self.key_file = key_file
+        self.token = None
         logging.info(f"Initialized TokenManager with base_url: {self.base_url}, token_file: {self.token_file}, key_file: {self.key_file}")
 
     def generate_key(self):
@@ -70,3 +71,19 @@ class TokenManager:
         if os.path.exists(self.key_file):
             os.remove(self.key_file)
             logging.info(f"Key file {self.key_file} deleted.")
+
+    def get_token(self):
+        if self.token is None:
+            self.token = self.load_token()
+        return self.token
+
+    def load_token(self):
+        if os.path.exists(self.token_file) and os.path.exists(self.key_file):
+            with open(self.key_file, "rb") as key_file:
+                key = key_file.read()
+            fernet = Fernet(key)
+            with open(self.token_file, "rb") as token_file:
+                encrypted_token = token_file.read()
+            return fernet.decrypt(encrypted_token).decode()
+        else:
+            raise FileNotFoundError("Token or key file not found. Please set the token first.")
