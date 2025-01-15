@@ -33,8 +33,26 @@ def prompt_base_url_via_gui(root):
             if base_url.startswith("https://"):
                 try:
                     os.makedirs("resources", exist_ok=True)
-                    with open("resources/config.txt", "w") as f:
-                        f.write(f"base_url={base_url}\n")
+                    config_path = "resources/config.txt"
+                    
+                    # Read existing lines from the config file
+                    lines = []
+                    if os.path.exists(config_path):
+                        with open(config_path, "r") as f:
+                            lines = f.readlines()
+                    
+                    # Update or add the base_url line
+                    with open(config_path, "w") as f:
+                        base_url_written = False
+                        for line in lines:
+                            if line.startswith("base_url="):
+                                f.write(f"base_url={base_url}\n")
+                                base_url_written = True
+                            else:
+                                f.write(line)
+                        if not base_url_written:
+                            f.write(f"base_url={base_url}\n")
+                    
                     return base_url
                 except (IOError, OSError) as e:
                     messagebox.showerror("Error", f"Error saving configuration file: {e}")

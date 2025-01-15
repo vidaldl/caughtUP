@@ -1,4 +1,5 @@
 import os
+import time
 from tkinter import messagebox
 from backup_manager.api_handler import CanvasAPIHandler
 from backup_manager.backup_runner import BackupRunner
