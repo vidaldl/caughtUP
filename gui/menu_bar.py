@@ -30,8 +30,26 @@ class MenuBar:
         if folder:
             if os.access(folder, os.W_OK):
                 os.makedirs("resources", exist_ok=True)
-                with open("resources/config.txt", "w") as f:
-                    f.write(f"backup_folder={folder}\n")
+                config_path = "resources/config.txt"
+                
+                # Read existing lines from the config file
+                lines = []
+                if os.path.exists(config_path):
+                    with open(config_path, "r") as f:
+                        lines = f.readlines()
+                
+                # Update or add the backup_folder line
+                with open(config_path, "w") as f:
+                    backup_folder_written = False
+                    for line in lines:
+                        if line.startswith("backup_folder="):
+                            f.write(f"backup_folder={folder}\n")
+                            backup_folder_written = True
+                        else:
+                            f.write(line)
+                    if not backup_folder_written:
+                        f.write(f"backup_folder={folder}\n")
+                
                 messagebox.showinfo("Backup Folder Changed", f"Default backup folder set to: {folder}")
             else:
                 messagebox.showerror("Permission Denied", "The selected folder is not writable. Please choose a different folder.")

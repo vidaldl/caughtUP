@@ -1,11 +1,9 @@
-# File: gui/main_interface.py
-
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk
 from gui.csv_handler import CSVHandler
-from gui.backup_manager import BackupManager
 from gui.ui_components import create_table, create_progress_bar
 from gui.menu_bar import MenuBar
+from gui.backup_manager import BackupManager
 
 class MainInterface:
     def __init__(self, root, token_manager):
@@ -14,15 +12,10 @@ class MainInterface:
 
         # Set the window title and dynamic size
         self.root.title("Course Backup Manager")
-
-        # Load preferred size or use default dynamic size
-        preferred_width = 800  # Example: default width
-        preferred_height = 600  # Example: default height
-        self.root.geometry(f"{preferred_width}x{preferred_height}")
+        self.root.geometry("800x600")
 
         # Initialize and attach the menu bar
         self.menu_bar = MenuBar(root, self.token_manager)
-        print("MenuBar initialized")  # Debugging statement
 
         # Create the main frame
         self.main_frame = ttk.Frame(root, padding="10")
@@ -68,6 +61,7 @@ class MainInterface:
             self.control_frame, text="Stop", command=self.backup_manager.stop_backup
         )
         self.stop_button.pack(side=tk.LEFT, padx=5)
+        self.stop_button.config(state=tk.DISABLED)
 
         # Overall progress bar
         self.progress_frame = ttk.Frame(self.main_frame)
@@ -76,3 +70,7 @@ class MainInterface:
 
         # State variables
         self.is_running = False
+
+    def update_progress_bar(self, value):
+        self.overall_progress["value"] = value
+        self.root.update_idletasks()

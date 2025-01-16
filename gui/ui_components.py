@@ -7,13 +7,15 @@ def create_table(parent):
     table_frame.pack(fill=tk.BOTH, expand=True, pady=10)
 
     table = ttk.Treeview(
-        table_frame, columns=("Course Name", "Status", "Progress"), show="headings"
+        table_frame, columns=("Course Name", "Course ID", "Status", "Progress"), show="headings"
     )
     table.heading("Course Name", text="Course Name")
+    table.heading("Course ID", text="Course ID")
     table.heading("Status", text="Status")
     table.heading("Progress", text="Progress")
 
     table.column("Course Name", anchor=tk.W, width=300, stretch=True)
+    table.column("Course ID", anchor=tk.CENTER, width=150, stretch=True)
     table.column("Status", anchor=tk.CENTER, width=150, stretch=True)
     table.column("Progress", anchor=tk.CENTER, width=150, stretch=True)
 
