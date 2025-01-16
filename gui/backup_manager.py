@@ -13,6 +13,7 @@ class BackupManager:
         self.interrupted_items = set()
         self.api_handler = None
         self.backup_runner = None
+        self.stop_event = asyncio.Event()  # Add stop event
 
     def get_backup_directory(self):
         """Retrieve the user-selected backup directory from the config file."""
@@ -32,6 +33,7 @@ class BackupManager:
             return
 
         self.is_running = True
+        self.stop_event.clear()  # Clear stop event
         self.main_interface.start_button.config(state="disabled")
         self.main_interface.retry_button.config(state="disabled")
         self.main_interface.stop_button.config(state="normal")
@@ -41,9 +43,8 @@ class BackupManager:
         output_dir = self.get_backup_directory()  # Get the dynamic backup directory
 
         async def async_start_backup():
-            print(self.status_callback);
             self.api_handler = CanvasAPIHandler(base_url, api_token)
-            self.backup_runner = BackupRunner(self.api_handler, output_dir)
+            self.backup_runner = BackupRunner(self.api_handler, output_dir, self.stop_event)  # Pass stop event
 
             queue = asyncio.Queue()
 
@@ -51,8 +52,10 @@ class BackupManager:
             for item in self.table.get_children():
                 course_name = self.table.item(item)['values'][0]
                 course_id = self.table.item(item)['values'][1]
-                queue.put_nowait((course_name, course_id, self.status_callback))
-                self.table.item(item, values=(course_name, course_id, "Queued", "0%"))
+                status = self.table.item(item)['values'][2]
+                if(status == "Pending" or status == "Failed" or status == "Stopped"):
+                    queue.put_nowait((course_name, course_id, self.status_callback))
+                    self.table.item(item, values=(course_name, course_id, "Queued", "0%"))
 
             try:
                 # Process the queue
@@ -76,12 +79,13 @@ class BackupManager:
 
     def retry_failed(self):
         for item in self.table.get_children():
-            if self.table.item(item)['values'][2] == "Failed":
+            if self.table.item(item)['values'][2] == "Failed" or self.table.item(item)['values'][2] == "Stopped":
                 self.table.item(item, values=(self.table.item(item)['values'][0], self.table.item(item)['values'][1], "Pending", "0%"))
         self.start_backup()
 
     def stop_backup(self):
         if self.is_running:
+            self.stop_event.set()  # Set stop event
             messagebox.showinfo("Stop Backup", "Backup process stopped by user.")
         self.is_running = False
         self.main_interface.start_button.config(state="normal")
