@@ -41,6 +41,7 @@ class BackupManager:
         output_dir = self.get_backup_directory()  # Get the dynamic backup directory
 
         async def async_start_backup():
+            print(self.status_callback);
             self.api_handler = CanvasAPIHandler(base_url, api_token)
             self.backup_runner = BackupRunner(self.api_handler, output_dir)
 
@@ -67,10 +68,10 @@ class BackupManager:
 
         asyncio.run(async_start_backup())
 
-    def status_callback(self, course_name, status, progress):
+    def status_callback(self, course_name, course_id, status, progress):
         for item in self.table.get_children():
             if self.table.item(item)['values'][0] == course_name:
-                self.table.item(item, values=(course_name, status, f"{progress}%"))
+                self.table.item(item, values=(course_name, course_id, status, f"{progress}%"))
                 self.main_interface.root.update()
 
     def retry_failed(self):

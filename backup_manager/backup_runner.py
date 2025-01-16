@@ -19,9 +19,9 @@ class BackupRunner:
         try:
             if status_callback:
                 if asyncio.iscoroutinefunction(status_callback):
-                    await status_callback(course_name, "Backing up", 0)
+                    await status_callback(course_name, course_id, "Backing up", 0)
                 else:
-                    status_callback(course_name, "Backing up", 0)
+                    status_callback(course_name, course_id, "Backing up", 0)
 
             logging.info(f"Starting export for course: {course_name} (ID: {course_id})")
             export_id = await self.trigger_course_export(course_id)
@@ -31,35 +31,35 @@ class BackupRunner:
                 logging.error(f"Export failed for course: {course_name} (ID: {course_id})")
                 if status_callback:
                     if asyncio.iscoroutinefunction(status_callback):
-                        await status_callback(course_name, "Failed", 0)
+                        await status_callback(course_name, course_id, "Failed", 0)
                     else:
                         status_callback(course_name, "Failed", 0)
                 return False
 
             if status_callback:
                 if asyncio.iscoroutinefunction(status_callback):
-                    await status_callback(course_name, "Downloading", 0)
+                    await status_callback(course_name, course_id, "Downloading", 0)
                 else:
-                    status_callback(course_name, "Downloading", 0)
+                    status_callback(course_name, course_id, "Downloading", 0)
 
-            await self.download_backup(course_name, export_url, status_callback)
+            await self.download_backup(course_name, export_url, status_callback, course_id)
             await self.manage_backups(course_name)
 
             logging.info(f"Backup completed for course: {course_name} (ID: {course_id})")
             if status_callback:
                 if asyncio.iscoroutinefunction(status_callback):
-                    await status_callback(course_name, "Completed", 100)
+                    await status_callback(course_name, course_id, "Completed", 100)
                 else:
-                    status_callback(course_name, "Completed", 100)
+                    status_callback(course_name, course_id, "Completed", 100)
             return True
 
         except Exception as e:
             logging.error(f"Backup failed for course: {course_name} (ID: {course_id}): {e}")
             if status_callback:
                 if asyncio.iscoroutinefunction(status_callback):
-                    await status_callback(course_name, "Failed", 0)
+                    await status_callback(course_name, course_id, "Failed", 0)
                 else:
-                    status_callback(course_name, "Failed", 0)
+                    status_callback(course_name, course_id, "Failed", 0)
             return False
 
     async def trigger_course_export(self, course_id: str):
@@ -99,9 +99,9 @@ class BackupRunner:
 
             if status_callback:
                 if asyncio.iscoroutinefunction(status_callback):
-                    await status_callback(course_name, "Backing up", progress)
+                    await status_callback(course_name, course_id, "Backing up", progress)
                 else:
-                    status_callback(course_name, "Backing up", progress)
+                    status_callback(course_name, course_id, "Backing up", progress)
 
             logging.info(f"Polling progress status: {progress}% completed...")
 
@@ -116,8 +116,9 @@ class BackupRunner:
         logging.error(f"Export timed out for course ID: {course_id}")
         return None
 
-    async def download_backup(self, course_name: str, file_url: str, status_callback):
-        async with aiohttp.ClientSession() as session:
+    async def download_backup(self, course_name: str, file_url: str, status_callback, course_id):
+        timeout = aiohttp.ClientTimeout(total=3600)  # Set a timeout of 1 hour
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.get(file_url) as response:
                 response.raise_for_status()
 
@@ -140,9 +141,9 @@ class BackupRunner:
                             if status_callback and total_size > 0:
                                 progress = int((downloaded_size / total_size) * 100)
                                 if asyncio.iscoroutinefunction(status_callback):
-                                    await status_callback(course_name, "Downloading", progress)
+                                    await status_callback(course_name, course_id, "Downloading", progress)
                                 else:
-                                    status_callback(course_name, "Downloading", progress)
+                                    status_callback(course_name, course_id, "Downloading", progress)
 
                 logging.info(f"Downloaded backup: {file_path}")
 

@@ -6,6 +6,22 @@ from gui.main_interface import MainInterface
 from backup_manager.token_manager import TokenManager
 import os
 import atexit
+import logging
+
+# Ensure log directory exists
+log_dir = "logs"
+os.makedirs(log_dir, exist_ok=True)
+
+# Configure logging
+log_file = os.path.join(log_dir, "app.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler()
+    ]
+)
 
 def load_base_url():
     config_file = "resources/config.txt"
