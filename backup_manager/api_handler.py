@@ -13,7 +13,7 @@ class CanvasAPIHandler:
         self.session = ClientSession(
             headers=self.headers, 
             timeout=ClientTimeout(total=30),
-            connnector=TCPConnector(ssl=False)
+            connector=TCPConnector(ssl=False)
             )
 
     async def make_request(self, endpoint: str, method: str = "GET", params: dict = None, data: dict = None):
