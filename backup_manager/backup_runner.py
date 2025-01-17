@@ -7,11 +7,11 @@ import aiohttp
 import aiofiles
 from backup_manager.api_handler import CanvasAPIHandler
 
-
 class BackupRunner:
-    def __init__(self, api_handler: CanvasAPIHandler, output_dir: str, concurrency_limit: int = 10):
+    def __init__(self, api_handler: CanvasAPIHandler, output_dir: str, stop_event: asyncio.Event, concurrency_limit: int = 5):
         self.api_handler = api_handler
         self.output_dir = output_dir
+        self.stop_event = stop_event  # Add stop event
         self.concurrency_limit = concurrency_limit
         self.semaphore = asyncio.Semaphore(concurrency_limit)
 
@@ -33,7 +33,7 @@ class BackupRunner:
                     if asyncio.iscoroutinefunction(status_callback):
                         await status_callback(course_name, course_id, "Failed", 0)
                     else:
-                        status_callback(course_name, "Failed", 0)
+                        status_callback(course_name, course_id, "Failed", 0)
                 return False
 
             if status_callback:
@@ -47,10 +47,17 @@ class BackupRunner:
 
             logging.info(f"Backup completed for course: {course_name} (ID: {course_id})")
             if status_callback:
-                if asyncio.iscoroutinefunction(status_callback):
-                    await status_callback(course_name, course_id, "Completed", 100)
+                if self.stop_event.is_set():  # Check stop event
+                    logging.info(f"Backup Stopped by User")
+                    if asyncio.iscoroutinefunction(status_callback):
+                        await status_callback(course_name, course_id, "Stopped", 0)
+                    else:
+                        status_callback(course_name, course_id, "Stopped", 0)
                 else:
-                    status_callback(course_name, course_id, "Completed", 100)
+                    if asyncio.iscoroutinefunction(status_callback):
+                        await status_callback(course_name, course_id, "Completed", 100)
+                    else:
+                        status_callback(course_name, course_id, "Completed", 100)
             return True
 
         except Exception as e:
@@ -92,6 +99,10 @@ class BackupRunner:
             return None
 
         for _ in range(300):  # Polling for up to 300 seconds (5 minutes)
+            if self.stop_event.is_set():  # Check stop event
+                logging.info(f"Backup stopped for course: {course_name} (ID: {course_id})")
+                return None
+
             stripped_progress_url = progress_url.replace("https://byui.instructure.com", "")
             progress_response = await self.api_handler.make_request(stripped_progress_url)
             progress = progress_response.get("completion", 0)
@@ -145,6 +156,10 @@ class BackupRunner:
                                 else:
                                     status_callback(course_name, course_id, "Downloading", progress)
 
+                            if self.stop_event.is_set():  # Check stop event
+                                logging.info(f"Download stopped for course: {course_name} (ID: {course_id})")
+                                return
+
                 logging.info(f"Downloaded backup: {file_path}")
 
     async def manage_backups(self, course_name: str):
@@ -163,6 +178,10 @@ class BackupRunner:
         """Process tasks from the queue concurrently with a concurrency limit."""
         async def worker():
             while not queue.empty():
+                if self.stop_event.is_set():  # Check stop event
+                    logging.info("Backup process stopped by user.")
+                    break
+
                 course_name, course_id, status_callback = await queue.get()
                 async with self.semaphore:
                     await self.run_backup(course_name, course_id, status_callback)

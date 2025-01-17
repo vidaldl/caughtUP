@@ -4,6 +4,7 @@ from gui.csv_handler import CSVHandler
 from gui.ui_components import create_table, create_progress_bar
 from gui.menu_bar import MenuBar
 from gui.backup_manager import BackupManager
+from backup_manager.token_manager import TokenManager  # Add this import
 
 class MainInterface:
     def __init__(self, root, token_manager):
@@ -74,3 +75,9 @@ class MainInterface:
     def update_progress_bar(self, value):
         self.overall_progress["value"] = value
         self.root.update_idletasks()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    token_manager = TokenManager()
+    app = MainInterface(root, token_manager)
+    root.mainloop()
