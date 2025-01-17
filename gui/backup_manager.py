@@ -77,6 +77,17 @@ class BackupManager:
                 self.table.item(item, values=(course_name, course_id, status, f"{progress}%"))
                 self.main_interface.root.update()
 
+        # Calculate overall progress
+        total_courses = len(self.table.get_children())
+        completed_courses = sum(
+            1 for item in self.table.get_children()
+            if self.table.item(item)['values'][2] in ["Completed", "Failed", "Stopped"]
+        )
+        overall_progress = (completed_courses / total_courses) * 100
+
+        # Update the overall progress bar
+        self.main_interface.update_progress_bar(overall_progress)
+
     def retry_failed(self):
         for item in self.table.get_children():
             if self.table.item(item)['values'][2] == "Failed" or self.table.item(item)['values'][2] == "Stopped":

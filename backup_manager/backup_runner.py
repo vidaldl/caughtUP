@@ -8,7 +8,7 @@ import aiofiles
 from backup_manager.api_handler import CanvasAPIHandler
 
 class BackupRunner:
-    def __init__(self, api_handler: CanvasAPIHandler, output_dir: str, stop_event: asyncio.Event, concurrency_limit: int = 10):
+    def __init__(self, api_handler: CanvasAPIHandler, output_dir: str, stop_event: asyncio.Event, concurrency_limit: int = 5):
         self.api_handler = api_handler
         self.output_dir = output_dir
         self.stop_event = stop_event  # Add stop event
