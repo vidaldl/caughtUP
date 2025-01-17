@@ -6,6 +6,7 @@ from datetime import datetime
 import aiohttp
 import aiofiles
 from backup_manager.api_handler import CanvasAPIHandler
+from backup_manager.system_compat import configure_platform_settings
 
 class BackupRunner:
     def __init__(self, api_handler: CanvasAPIHandler, output_dir: str, stop_event: asyncio.Event, concurrency_limit: int = 5):
@@ -14,6 +15,9 @@ class BackupRunner:
         self.stop_event = stop_event  # Add stop event
         self.concurrency_limit = concurrency_limit
         self.semaphore = asyncio.Semaphore(concurrency_limit)
+
+        # Configure platform-specific settings on initialization
+        configure_platform_settings()
 
     async def run_backup(self, course_name: str, course_id: str, status_callback=None):
         try:

@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
+import asyncio
 from gui.csv_handler import CSVHandler
 from gui.ui_components import create_table, create_progress_bar
 from gui.menu_bar import MenuBar
@@ -14,6 +16,9 @@ class MainInterface:
         # Set the window title and dynamic size
         self.root.title("Course Backup Manager")
         self.root.geometry("800x600")
+
+        # Override the close protocol for graceful exit
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         # Initialize and attach the menu bar
         self.menu_bar = MenuBar(root, self.token_manager)
@@ -75,6 +80,15 @@ class MainInterface:
     def update_progress_bar(self, value):
         self.overall_progress["value"] = value
         self.root.update_idletasks()
+
+    def on_close(self):
+        """Handle application close event."""
+        if self.is_running:
+            if not messagebox.askyesno("Exit", "Tasks are running. Are you sure you want to exit?"):
+                return
+
+        self.backup_manager.stop_backup()  # Ensure tasks are stopped
+        self.root.destroy()
 
 if __name__ == "__main__":
     root = tk.Tk()
