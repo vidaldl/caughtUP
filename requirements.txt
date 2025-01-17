@@ -1,4 +1,7 @@
 PyQt5
-tkinter
+tk
+aiofiles
+cryptography
 aiohttp
 aiofiles
+requests

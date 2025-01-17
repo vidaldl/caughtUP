@@ -129,7 +129,8 @@ class BackupRunner:
 
     async def download_backup(self, course_name: str, file_url: str, status_callback, course_id):
         timeout = aiohttp.ClientTimeout(total=3600)  # Set a timeout of 1 hour
-        async with aiohttp.ClientSession(timeout=timeout) as session:
+        connector = aiohttp.TCPConnector(ssl=False)  # Disable SSL verification
+        async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
             async with session.get(file_url) as response:
                 response.raise_for_status()
 
