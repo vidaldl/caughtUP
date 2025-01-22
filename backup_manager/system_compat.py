@@ -42,7 +42,7 @@ def _disable_app_nap():
     """
     try:
         import ctypes
-        from ctypes import c_void_p, c_uint, c_char_p
+        from ctypes import c_void_p, c_uint, c_char_p, POINTER
 
         # Load Objective-C runtime
         objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
@@ -64,14 +64,21 @@ def _disable_app_nap():
 
         # Get the NSProcessInfo singleton
         NSProcessInfo = objc.objc_getClass(b"NSProcessInfo")
+        if not NSProcessInfo:
+            logging.error("Failed to retrieve NSProcessInfo class. Objective-C runtime might not be functioning correctly.")
+            return
+
         processInfoSelector = objc.sel_registerName(b"processInfo")
-        activity = foundation.objc_msgSend(NSProcessInfo, processInfoSelector)
+        processInfo = foundation.objc_msgSend(NSProcessInfo, processInfoSelector)
+        if not processInfo:
+            logging.error("Failed to retrieve processInfo instance. Ensure the Objective-C runtime is correctly loaded.")
+            return
 
         # Call beginActivityWithOptions:reason:
         beginActivitySelector = objc.sel_registerName(b"beginActivityWithOptions:reason:")
         foundation.objc_msgSend.argtypes = [c_void_p, c_void_p, c_uint, c_char_p]
         result = foundation.objc_msgSend(
-            activity,
+            processInfo,
             beginActivitySelector,
             NSActivityUserInitiated | NSActivityIdleSystemSleepDisabled,
             b"Prevent App Nap"
@@ -80,14 +87,13 @@ def _disable_app_nap():
         if result:
             logging.info("Successfully disabled App Nap programmatically on macOS.")
         else:
-            logging.warning("Failed to disable App Nap: Objective-C call returned a failure result.")
+            logging.error("Failed to disable App Nap: Objective-C call did not create activity successfully.")
 
     except FileNotFoundError:
         logging.warning("Failed to disable App Nap: Required libraries not found. Ensure macOS runtime is intact.")
     except Exception as e:
-        logging.warning(f"Failed to disable App Nap due to an unexpected error: {e}")
+        logging.error(f"Failed to disable App Nap due to an unexpected error: {e}", exc_info=True)
 
-        
 def _set_windows_foreground_priority():
     """
     Set the Windows process priority to ensure tasks run in the foreground
