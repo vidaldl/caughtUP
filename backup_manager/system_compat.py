@@ -41,24 +41,29 @@ def _disable_app_nap():
     Disable App Nap on macOS to prevent the app from being suspended when idle.
     """
     try:
-        # Use macOS defaults command to disable App Nap for this process
-        process_name = os.path.basename(__file__)
-        command = [
-            "defaults",
-            "write",
-            "com.apple.PowerManagement",
-            f"{process_name}",
-            "Disabled"
-        ]
-        result = subprocess.run(command, check=True, capture_output=True, text=True)
-        if result.returncode == 0:
-            logging.info("Successfully disabled App Nap on macOS.")
+        import ctypes
+
+        # Using Objective-C runtime to prevent App Nap programmatically
+        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
+        foundation = ctypes.cdll.LoadLibrary("/System/Library/Frameworks/Foundation.framework/Foundation")
+
+        NSProcessInfo = objc.objc_getClass(b"NSProcessInfo")
+        processInfo = objc.sel_registerName(b"processInfo")
+        beginActivity = objc.sel_registerName(b"beginActivityWithOptions:reason:")
+
+        # Define constants for preventing App Nap
+        NSActivityUserInitiated = 0x00FFFFFF
+        NSActivityIdleSystemSleepDisabled = 0x00000001
+
+        # Prevent App Nap
+        activity = foundation.objc_msgSend(NSProcessInfo, processInfo)
+        result = foundation.objc_msgSend(activity, beginActivity, NSActivityUserInitiated | NSActivityIdleSystemSleepDisabled, b"Prevent App Nap")
+        if result:
+            logging.info("Successfully disabled App Nap programmatically on macOS.")
         else:
-            logging.warning(f"Failed to disable App Nap. Command output: {result.stderr}")
+            logging.warning("Failed to disable App Nap: Objective-C call returned a failure result.")
     except FileNotFoundError:
-        logging.warning("Failed to disable App Nap: 'defaults' command not found. Ensure macOS command-line tools are installed.")
-    except PermissionError:
-        logging.warning("Failed to disable App Nap: Insufficient permissions. Try running the application with elevated privileges.")
+        logging.warning("Failed to disable App Nap: Required libraries not found. Ensure macOS runtime is intact.")
     except Exception as e:
         logging.warning(f"Failed to disable App Nap due to an unexpected error: {e}")
 
