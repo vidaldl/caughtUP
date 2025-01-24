@@ -1,34 +1,43 @@
 import csv
 import logging
+from urllib.parse import urlparse
 
 class CSVValidator:
-    def __init__(self, filepath: str):
+    def __init__(self, filepath: str, expected_domain: str = None):
         self.filepath = filepath
+        self.expected_domain = expected_domain  # e.g., "canvas.instructure.com"
 
-    def validate(self):
-        """Validates the structure and content of the CSV file."""
+    def validate(self) -> tuple[bool, str]:
+        """Returns (is_valid, error_message)"""
         try:
             with open(self.filepath, "r", encoding="utf-8-sig") as csvfile:
                 reader = csv.reader(csvfile)
-
-                # Check header
+                
+                # Validate header
                 header = next(reader, None)
-                if not header or len(header) < 2 or header[:2] != ["Course Name", "Course Link"]:
-                    logging.error("CSV validation failed: Incorrect header structure.")
-                    return False, "Invalid CSV structure. Expected 'Course Name' and 'Course Link' columns."
+                if not header or [col.strip() for col in header[:2]] != ["Course Name", "Course URL"]:
+                    return False, "Invalid CSV structure. First two columns must be 'Course Name' and 'Course Link'"
 
                 # Validate rows
                 for row_num, row in enumerate(reader, start=2):
-                    if len(row) < 2 or not row[1].startswith("http"):
-                        logging.error(f"CSV validation failed: Invalid row {row_num}: {row}")
-                        return False, f"Invalid row at line {row_num}: {row}. Ensure all rows have a valid course link."
+                    if len(row) < 2:
+                        return False, f"Row {row_num}: Missing columns"
+                        
+                    course_name, course_url = row[0].strip(), row[1].strip()
+                    
+                    # Validate URL format
+                    if not course_url.startswith(("http://", "https://")):
+                        return False, f"Row {row_num}: Invalid URL format"
+                        
+                    # Optional: Validate domain match
+                    if self.expected_domain:
+                        parsed = urlparse(course_url)
+                        if parsed.netloc != self.expected_domain:
+                            return False, f"Row {row_num}: URL domain must be {self.expected_domain}"
 
-            logging.info("CSV validation passed.")
-            return True, "CSV validation successful."
+                return True, "CSV validation successful"
 
         except FileNotFoundError:
-            logging.error(f"CSV file not found: {self.filepath}")
-            return False, f"File not found: {self.filepath}."
+            return False, f"File not found: {self.filepath}"
         except Exception as e:
-            logging.error(f"Unexpected error during CSV validation: {e}")
-            return False, f"Unexpected error: {e}"
+            return False, f"Validation error: {str(e)}"
