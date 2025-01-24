@@ -134,6 +134,7 @@ class BackupRunner:
     async def download_backup(self, course_name: str, file_url: str, status_callback, course_id):
         timeout = aiohttp.ClientTimeout(total=3600)  # Set a timeout of 1 hour
         connector = aiohttp.TCPConnector(ssl=False)  # Disable SSL verification
+        chunk_size = 1024 * 1024 # 1 MB chunk size
         async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
             async with session.get(file_url) as response:
                 response.raise_for_status()
@@ -150,7 +151,7 @@ class BackupRunner:
                 file_path = os.path.join(course_dir, file_name)
 
                 async with aiofiles.open(file_path, "wb") as f:
-                    async for chunk in response.content.iter_chunked(1024):
+                    async for chunk in response.content.iter_chunked(chunk_size):
                         if chunk:
                             await f.write(chunk)
                             downloaded_size += len(chunk)
