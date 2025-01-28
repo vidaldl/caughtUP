@@ -28,7 +28,7 @@ class CSVHandler:
         try:
             # Validate and sanitize CSV
             validator = CSVValidator(file_path, self.canvas_domain)
-            is_valid, error_msg, sanitized_rows = validator.validate_and_sanitize()
+            is_valid, error_msg, sanitized_rows, duplicateCourses = validator.validate_and_sanitize()
             
             if not is_valid:
                 raise ValueError(error_msg)
@@ -46,10 +46,10 @@ class CSVHandler:
             ]
 
             # Show summary and update UI
-            self._show_import_summary(len(sanitized_rows), validator.duplicates)
+            self._show_import_summary(len(sanitized_rows), duplicateCourses)
             self.main_interface.csv_label.config(text=file_path)
             self.main_interface.start_button.config(state="normal")
-            self.main_interface.refresh_table_view()
+            self.main_interface._refresh_table()
 
         except ValueError as ve:
             messagebox.showerror("CSV Error", str(ve))
@@ -92,7 +92,7 @@ class CSVHandler:
         if duplicate_courses:
             text_box.insert(END, "Duplicate courses:\n\n")
             for course in duplicate_courses:
-                text_box.insert(END, f"• {course[0]} (ID: {course[1]})\n")
+                text_box.insert(END, f"[Row {course[0]}] - {course[1]} - {course[2]}\n")
         else:
             text_box.insert(END, "No duplicate courses found")
         text_box.config(state="disabled")
