@@ -1,9 +1,9 @@
 import csv
 import re
 import logging
-from tkinter import filedialog, messagebox, ttk, END, Text, Toplevel
-from backup_manager.csv_validator import CSVValidator
+from tkinter import filedialog, messagebox, ttk, Toplevel, Text, Frame, Scrollbar, END
 from urllib.parse import urlparse
+from backup_manager.csv_validator import CSVValidator
 
 class CSVHandler:
     def __init__(self, main_interface):
@@ -12,9 +12,9 @@ class CSVHandler:
 
     def _get_canvas_domain(self):
         """Extracts domain from configured base URL"""
-        if hasattr(self.main_interface, 'token_manager'):
+        if hasattr(self.main_interface, 'token_manager') and self.main_interface.token_manager.base_url:
             url = urlparse(self.main_interface.token_manager.base_url).netloc
-            return url.replace(":443", "") if url else None
+            return url.replace(":443", "")  # Remove port if present
         return None
 
     def browse_csv(self):
@@ -28,61 +28,60 @@ class CSVHandler:
         try:
             # Validate and sanitize CSV
             validator = CSVValidator(file_path, self.canvas_domain)
-            is_valid, error_msg, sanitized_rows, duplicate_courses = validator.validate_and_sanitize()
+            is_valid, error_msg, sanitized_rows = validator.validate_and_sanitize()
             
             if not is_valid:
                 raise ValueError(error_msg)
 
-            # Clear existing table
+            # Clear existing data and populate new
             self.main_interface.table.delete(*self.main_interface.table.get_children())
+            self.main_interface.current_data = [
+                {
+                    "sanitized_name": row["sanitized_name"],
+                    "course_id": row["course_id"],
+                    "status": "Pending",
+                    "progress": "0%"
+                }
+                for row in sanitized_rows
+            ]
 
-            # Populate table with sanitized data
-            duplicates_removed = len(duplicate_courses)
-            for row in sanitized_rows:
-                self.main_interface.table.insert("", "end", values=(
-                    row["sanitized_name"],
-                    row["course_id"],
-                    "Pending",
-                    "0%"
-                ))
-
-            # Show summary
-            self._show_import_summary(len(sanitized_rows), duplicate_courses)
+            # Show summary and update UI
+            self._show_import_summary(len(sanitized_rows), validator.duplicates)
             self.main_interface.csv_label.config(text=file_path)
             self.main_interface.start_button.config(state="normal")
+            self.main_interface.refresh_table_view()
 
         except ValueError as ve:
             messagebox.showerror("CSV Error", str(ve))
         except Exception as e:
+            logging.error(f"CSV handling error: {str(e)}", exc_info=True)
             messagebox.showerror("Error", f"Unexpected error: {e}")
 
     def _show_import_summary(self, imported_count: int, duplicate_courses: list):
-        """Displays post-import statistics with duplicate details in scrollable box"""
-        # Create custom dialog window
+        """Displays post-import statistics with duplicate details"""
         summary_window = Toplevel(self.main_interface.root)
         summary_window.title("Import Summary")
-        summary_window.geometry("500x400")
-        
-        # Main container frame
+        summary_window.geometry("600x400")
+
+        # Main container
         container = ttk.Frame(summary_window)
         container.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Summary text
-        summary_text = f"Successfully imported {imported_count} courses\n" \
-                      f"Removed {len(duplicate_courses)} duplicates"
-                      
-        ttk.Label(container, text=summary_text).pack(pady=(0, 10))
+        summary_text = f"• Successfully imported {imported_count} courses\n" \
+                      f"• Removed {len(duplicate_courses)} duplicates"
+        ttk.Label(container, text=summary_text).pack(anchor="w", pady=(0, 10))
 
-        # Create scrollable text box for duplicates
+        # Duplicates list
         duplicates_frame = ttk.Frame(container)
         duplicates_frame.pack(fill="both", expand=True)
 
         # Text widget with scrollbar
-        text_box = Text(duplicates_frame, wrap="none", state="disabled")
+        text_box = Text(duplicates_frame, wrap="none", state="disabled", font=('TkDefaultFont', 10))
         scrollbar = ttk.Scrollbar(duplicates_frame, orient="vertical", command=text_box.yview)
         text_box.configure(yscrollcommand=scrollbar.set)
 
-        # Grid layout for proper scrollbar placement
+        # Layout
         text_box.grid(row=0, column=0, sticky="nsew")
         scrollbar.grid(row=0, column=1, sticky="ns")
         duplicates_frame.grid_rowconfigure(0, weight=1)
@@ -91,9 +90,9 @@ class CSVHandler:
         # Populate duplicates
         text_box.config(state="normal")
         if duplicate_courses:
-            text_box.insert(END, "Duplicate courses:\n")
+            text_box.insert(END, "Duplicate courses:\n\n")
             for course in duplicate_courses:
-                text_box.insert(END, f"Row {course[0]} - {course[1]} (ID: {course[2]})\n")
+                text_box.insert(END, f"• {course[0]} (ID: {course[1]})\n")
         else:
             text_box.insert(END, "No duplicate courses found")
         text_box.config(state="disabled")
@@ -101,6 +100,6 @@ class CSVHandler:
         # OK button
         ttk.Button(container, text="OK", command=summary_window.destroy).pack(pady=(10, 0))
 
-        # Make window resizable
+        # Window configuration
         summary_window.minsize(400, 300)
         container.pack_propagate(0)

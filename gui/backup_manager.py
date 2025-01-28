@@ -13,7 +13,7 @@ class BackupManager:
         self.interrupted_items = set()
         self.api_handler = None
         self.backup_runner = None
-        self.stop_event = asyncio.Event()  # Add stop event
+        self.stop_event = asyncio.Event()
 
     def get_backup_directory(self):
         """Retrieve the user-selected backup directory from the config file."""
