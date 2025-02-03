@@ -102,7 +102,7 @@ class BackupRunner:
             logging.error(f"No progress URL found for course ID: {course_id}")
             return None
 
-        for _ in range(300):  # Polling for up to 300 seconds (5 minutes)
+        for _ in range(600):  # Polling for up to 300 seconds (5 minutes)
             if self.stop_event.is_set():  # Check stop event
                 logging.info(f"Backup stopped for course: {course_name} (ID: {course_id})")
                 return None

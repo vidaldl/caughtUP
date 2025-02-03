@@ -38,61 +38,21 @@ def _is_windows_admin():
 
 def _disable_app_nap():
     """
-    Disable App Nap on macOS to prevent the app from being suspended when idle.
+    Disable App Nap on macOS using a safe system command.
     """
     try:
-        import ctypes
-        from ctypes import c_void_p, c_uint, c_char_p, POINTER
-
-        # Load Objective-C runtime
-        objc = ctypes.cdll.LoadLibrary("/usr/lib/libobjc.A.dylib")
-        foundation = ctypes.cdll.LoadLibrary("/System/Library/Frameworks/Foundation.framework/Foundation")
-
-        # Define return and argument types for Objective-C methods
-        objc.objc_getClass.restype = c_void_p
-        objc.objc_getClass.argtypes = [c_char_p]
-
-        objc.sel_registerName.restype = c_void_p
-        objc.sel_registerName.argtypes = [c_char_p]
-
-        foundation.objc_msgSend.restype = c_void_p
-        foundation.objc_msgSend.argtypes = [c_void_p, c_void_p]
-
-        # Constants for preventing App Nap
-        NSActivityUserInitiated = 0x00FFFFFF
-        NSActivityIdleSystemSleepDisabled = 0x00000001
-
-        # Get the NSProcessInfo singleton
-        NSProcessInfo = objc.objc_getClass(b"NSProcessInfo")
-        if not NSProcessInfo:
-            logging.error("Failed to retrieve NSProcessInfo class. Objective-C runtime might not be functioning correctly.")
-            return
-
-        processInfoSelector = objc.sel_registerName(b"processInfo")
-        processInfo = foundation.objc_msgSend(NSProcessInfo, processInfoSelector)
-        if not processInfo:
-            logging.error("Failed to retrieve processInfo instance. Ensure the Objective-C runtime is correctly loaded.")
-            return
-
-        # Call beginActivityWithOptions:reason:
-        beginActivitySelector = objc.sel_registerName(b"beginActivityWithOptions:reason:")
-        foundation.objc_msgSend.argtypes = [c_void_p, c_void_p, c_uint, c_char_p]
-        result = foundation.objc_msgSend(
-            processInfo,
-            beginActivitySelector,
-            NSActivityUserInitiated | NSActivityIdleSystemSleepDisabled,
-            b"Prevent App Nap"
+        result = subprocess.run(
+            ["defaults", "write", "org.python.python", "NSAppSleepDisabled", "-bool", "YES"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
-
-        if result:
-            logging.info("Successfully disabled App Nap programmatically on macOS.")
+        if result.returncode == 0:
+            logging.info("Successfully disabled App Nap using system defaults.")
         else:
-            logging.error("Failed to disable App Nap: Objective-C call did not create activity successfully.")
-
-    except FileNotFoundError:
-        logging.warning("Failed to disable App Nap: Required libraries not found. Ensure macOS runtime is intact.")
+            logging.warning(f"Failed to disable App Nap. Error: {result.stderr}")
     except Exception as e:
-        logging.error(f"Failed to disable App Nap due to an unexpected error: {e}", exc_info=True)
+        logging.error(f"Failed to disable App Nap due to an error: {e}", exc_info=True)
 
 def _set_windows_foreground_priority():
     """
