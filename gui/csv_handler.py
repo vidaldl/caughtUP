@@ -14,7 +14,9 @@ class CSVHandler:
         """Extracts domain from configured base URL"""
         if hasattr(self.main_interface, 'token_manager') and self.main_interface.token_manager.base_url:
             url = urlparse(self.main_interface.token_manager.base_url).netloc
-            return url.replace(":443", "")  # Remove port if present
+            clearedURL = url.replace(":443", "")
+            print(clearedURL)
+            return  clearedURL # Remove port if present
         return None
 
     def browse_csv(self):
