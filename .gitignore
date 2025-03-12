@@ -21,3 +21,6 @@ backups/
 resources/token.enc
 resources/key.key
 resources/config.txt
+
+#build
+build/
