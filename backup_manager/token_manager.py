@@ -3,11 +3,12 @@ from cryptography.fernet import Fernet
 import requests
 import logging
 from tkinter import simpledialog, messagebox
+from backup_manager.path_helper import get_resource_path
 
 class TokenManager:
     def __init__(self, token_file="resources/token.enc", key_file="resources/key.key"):
-        self.token_file = token_file
-        self.key_file = key_file
+        self.token_file = get_resource_path(token_file)
+        self.key_file = get_resource_path(key_file)
         self.base_url = None
         self.token = None
         
@@ -36,7 +37,7 @@ class TokenManager:
             break
     
     def load_or_request_base_url(self):
-        config_file = "resources/config.txt"
+        config_file = get_resource_path("resources/config.txt")
         
         # Attempt to load base_url from config file
         if os.path.exists(config_file):

@@ -6,8 +6,13 @@ import os
 import atexit
 import logging
 
-# Ensure log directory exists
-log_dir = "logs"
+# Ensure log directory exists, use user's home directory for logs when packaged
+if getattr(sys, 'frozen', False):
+    # Running as packaged app
+    log_dir = os.path.join(os.path.expanduser("~"), "CaughtUP", "logs")
+else:
+    # Running in development
+    log_dir = "logs"
 os.makedirs(log_dir, exist_ok=True)
 
 # Configure logging
