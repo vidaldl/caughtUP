@@ -3,11 +3,9 @@ from tkinter import ttk, messagebox
 import os
 import sys
 import time
+import threading
 import atexit
 import logging
-import threading
-from gui.main_interface import MainInterface
-from backup_manager.token_manager import TokenManager
 
 # Fix working directory when running as app bundle
 if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
@@ -16,19 +14,14 @@ if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
     if '.app/Contents/MacOS' in bundle_dir:
         # Running from .app bundle on macOS
         os.chdir(os.path.abspath(os.path.dirname(bundle_dir.split('.app/Contents/MacOS')[0])))
-        print(f"Changed working directory to: {os.getcwd()}")
 
-# Ensure log directory exists with absolute path
+# Configure logging
 if getattr(sys, 'frozen', False):
-    # Running as bundled app
     log_dir = os.path.join(os.path.expanduser("~"), "CaughtUP", "logs")
 else:
-    # Running in development
     log_dir = os.path.abspath("logs")
 
 os.makedirs(log_dir, exist_ok=True)
-
-# Configure logging
 log_file = os.path.join(log_dir, "app.log")
 logging.basicConfig(
     level=logging.INFO,
@@ -39,157 +32,104 @@ logging.basicConfig(
     ]
 )
 
-# Log system information
-logging.info(f"Starting application")
-logging.info(f"Python version: {sys.version}")
-logging.info(f"Executable: {sys.executable}")
-logging.info(f"Working directory: {os.getcwd()}")
-logging.info(f"Frozen: {getattr(sys, 'frozen', False)}")
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    logging.info(f"MEIPASS: {sys._MEIPASS}")
-logging.info(f"Log directory: {log_dir}")
-
-def get_resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller"""
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    
-    result = os.path.join(base_path, relative_path)
-    logging.info(f"Resource path for {relative_path}: {result}")
-    return result
-
 def save_state_on_exit():
     try:
-        # Placeholder: Add logic to save temporary data or clean up resources
         logging.info("Application state saved successfully.")
     except Exception as e:
         logging.error(f"Error while saving state: {e}")
 
-class SplashScreen:
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.overrideredirect(True)
-        self.root.attributes('-topmost', True)
+class LoadingWindow:
+    def __init__(self, master):
+        self.master = master
+        self.window = tk.Toplevel(master)
+        self.window.withdraw()  # Hide initially 
         
-        # Get screen dimensions
-        width, height = 500, 300
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
+        # Configure window
+        self.window.title("Loading")
+        self.window.attributes('-topmost', True)
+        
+        # No window decorations or titlebar if supported on this platform
+        try:
+            self.window.overrideredirect(True)
+        except:
+            pass
+        
+        # Size and position
+        width, height = 300, 80
+        screen_width = self.window.winfo_screenwidth()
+        screen_height = self.window.winfo_screenheight()
         x = (screen_width - width) // 2
         y = (screen_height - height) // 2
-        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        self.window.geometry(f"{width}x{height}+{x}+{y}")
         
-        # Main frame
-        frame = tk.Frame(self.root, bg="#f0f0f0", highlightbackground="#cccccc",
-                         highlightthickness=1)
-        frame.pack(fill="both", expand=True)
-        
-        # App title
-        title = tk.Label(frame, text="Course Backup Manager", font=("Helvetica", 24, "bold"),
-                        bg="#f0f0f0", fg="#305F87")
-        title.pack(pady=(50, 10))
-        
-        # Version
-        version = tk.Label(frame, text="v0.1", font=("Helvetica", 12),
-                          bg="#f0f0f0", fg="#666666")
-        version.pack(pady=(0, 20))
+        # Frame for content
+        frame = tk.Frame(self.window, padx=10, pady=10)
+        frame.pack(fill=tk.BOTH, expand=True)
         
         # Progress bar
-        self.progress_frame = tk.Frame(frame, bg="#f0f0f0")
-        self.progress_frame.pack(pady=10, padx=50, fill="x")
-        
-        self.progress = ttk.Progressbar(self.progress_frame, mode="indeterminate", length=400)
-        self.progress.pack(fill="x")
-        self.progress.start(15)
+        self.progress = ttk.Progressbar(frame, mode="indeterminate", length=280)
+        self.progress.pack(pady=(5, 10))
         
         # Status label
-        self.status_var = tk.StringVar()
-        self.status_var.set("Initializing...")
-        status = tk.Label(frame, textvariable=self.status_var, bg="#f0f0f0", fg="#666666")
-        status.pack(pady=10)
+        self.status_var = tk.StringVar(value="Loading...")
+        status_label = tk.Label(frame, textvariable=self.status_var)
+        status_label.pack()
         
-        # Copyright
-        year = time.strftime("%Y")
-        copyright = tk.Label(frame, text=f"© {year} David Leo Vidal", 
-                            font=("Helvetica", 9), bg="#f0f0f0", fg="#999999")
-        copyright.pack(side="bottom", pady=10)
+    def show(self, status_text=None):
+        if status_text:
+            self.status_var.set(status_text)
+        self.window.deiconify()
+        self.progress.start(10)
+        self.window.update()
         
-        self.root.update()
-    
     def update_status(self, text):
-        logging.info(f"Splash status: {text}")
         self.status_var.set(text)
-        self.root.update()
-    
-    def close(self):
-        self.root.destroy()
-
-def load_main_app():
-    try:
-        logging.info("Starting main application")
-        root = tk.Tk()
-        root.withdraw()  # Hide initially until fully loaded
+        self.window.update()
         
-        # Register cleanup function
-        atexit.register(save_state_on_exit)
-        
-        # Create and initialize TokenManager with resource paths
-        token_manager = TokenManager()
-        
-        # Create the main interface
-        app = MainInterface(root, token_manager)
-        
-        # Show the window
-        root.deiconify()
-        
-        # Start the Tkinter event loop
-        root.mainloop()
-    
-    except Exception as e:
-        logging.error(f"Error in main application: {e}", exc_info=True)
-        try:
-            messagebox.showerror("Error", f"An error occurred: {str(e)}")
-        except:
-            print(f"Error: {str(e)}")
-        sys.exit(1)
+    def hide(self):
+        self.progress.stop()
+        self.window.withdraw()
 
 def main():
-    try:
-        # Show splash screen
-        splash = SplashScreen()
-        
-        # Update status with short delays to ensure UI updates
-        splash.update_status("Loading components...")
-        time.sleep(0.3)
-        
-        splash.update_status("Initializing API connections...")
-        time.sleep(0.3)
-        
-        splash.update_status("Preparing user interface...")
-        time.sleep(0.3)
-        
-        # Schedule the splash screen to close and main app to launch
-        splash.update_status("Starting application...")
-        splash.root.after(1000, lambda: (splash.close(), load_main_app()))
-        
-        # Run the splash screen
-        splash.root.mainloop()
+    # Create the minimal root window without showing it
+    root = tk.Tk()
+    root.withdraw()
     
-    except Exception as e:
-        logging.error(f"Error during startup: {e}", exc_info=True)
-        
+    # Register cleanup function
+    atexit.register(save_state_on_exit)
+    
+    # Create a loading window 
+    loading = LoadingWindow(root)
+    
+    # This function loads and initializes components after the UI appears
+    def delayed_initialization():
         try:
-            # Try to show error dialog
-            import tkinter.messagebox as msgbox
-            msgbox.showerror("Startup Error", f"Error during startup: {str(e)}")
-        except:
-            print(f"Error: {str(e)}")
-        
-        # Try to start the main app directly if splash fails
-        load_main_app()
+            # Now we import the heavy modules AFTER the UI is shown
+            loading.show("Loading token manager...")
+            from backup_manager.token_manager import TokenManager
+            token_manager = TokenManager()
+            
+            loading.update_status("Initializing interface...")
+            from gui.main_interface import MainInterface
+            app = MainInterface(root, token_manager)
+            
+            # Hide loading and show main window
+            loading.hide()
+            root.deiconify()
+            
+        except Exception as e:
+            logging.error(f"Error during initialization: {e}", exc_info=True)
+            loading.hide()
+            messagebox.showerror("Error", f"Failed to initialize: {str(e)}")
+            root.destroy()
+    
+    # Schedule the initialization to happen after a short delay
+    # This ensures the loading window appears immediately
+    root.after(100, lambda: loading.show("Starting..."))
+    root.after(200, delayed_initialization)
+    
+    # Start the main loop
+    root.mainloop()
 
 if __name__ == "__main__":
     main()
