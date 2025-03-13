@@ -3,11 +3,48 @@ from cryptography.fernet import Fernet
 import requests
 import logging
 from tkinter import simpledialog, messagebox
+import sys
+
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    result = os.path.join(base_path, relative_path)
+    logging.info(f"Resource path for {relative_path}: {result}")
+    return result
 
 class TokenManager:
     def __init__(self, token_file="resources/token.enc", key_file="resources/key.key"):
-        self.token_file = token_file
-        self.key_file = key_file
+        # Determine if running as an app bundle
+        if getattr(sys, 'frozen', False):
+            # Running as bundled app - use user's home directory for persistent files
+            self.resources_dir = os.path.join(os.path.expanduser("~"), "CaughtUP", "resources")
+            os.makedirs(self.resources_dir, exist_ok=True)
+            
+            self.token_file = os.path.join(self.resources_dir, os.path.basename(token_file))
+            self.key_file = os.path.join(self.resources_dir, os.path.basename(key_file))
+            self.config_file = os.path.join(self.resources_dir, "config.txt")
+        else:
+            # Running in development
+            self.resources_dir = os.path.dirname(token_file)
+            if not os.path.isabs(self.resources_dir):
+                self.resources_dir = os.path.abspath(self.resources_dir)
+                
+            self.token_file = os.path.abspath(token_file)
+            self.key_file = os.path.abspath(key_file)
+            self.config_file = os.path.join(self.resources_dir, "config.txt")
+        
+        logging.info(f"Resources directory: {self.resources_dir}")
+        logging.info(f"Token file path: {self.token_file}")
+        logging.info(f"Key file path: {self.key_file}")
+        logging.info(f"Config file path: {self.config_file}")
+        
+        os.makedirs(self.resources_dir, exist_ok=True)
+        
         self.base_url = None
         self.token = None
         
@@ -36,12 +73,10 @@ class TokenManager:
             break
     
     def load_or_request_base_url(self):
-        config_file = "resources/config.txt"
-        
         # Attempt to load base_url from config file
-        if os.path.exists(config_file):
+        if os.path.exists(self.config_file):
             try:
-                with open(config_file, "r") as f:
+                with open(self.config_file, "r") as f:
                     for line in f:
                         if line.startswith("base_url="):
                             self.base_url = line.strip().split("=", 1)[1]
@@ -63,8 +98,7 @@ class TokenManager:
             if self.base_url.startswith("https://") and self.is_base_url_valid():
                 logging.info(f"Base URL successfully validated: {self.base_url}")
                 try:
-                    os.makedirs(os.path.dirname(config_file), exist_ok=True)
-                    with open(config_file, "w") as f:
+                    with open(self.config_file, "w") as f:
                         f.write(f"base_url={self.base_url}\n")
                     logging.info("Base URL saved to config file.")
                 except Exception as e:
