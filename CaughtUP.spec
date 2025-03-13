@@ -1,14 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
+import sys
+import os
 
 block_cipher = None
 
-# Only include essential packages
+# Determine if we're building for Windows or macOS
+is_windows = sys.platform.startswith('win')
+is_macos = sys.platform.startswith('darwin')
+
+# Common analysis configuration
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
     datas=[
-        ('resources', 'resources'),
+        # Include build resources in the bundle
+        ('build_resources', 'build_resources'),
         ('logs', 'logs'),
     ],
     # Only specify the exact imports needed
@@ -39,41 +46,65 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name='CaughtUP',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,           # Enable UPX compression
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=True,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
-
-app = BUNDLE(
-    exe,
-    name='CaughtUP.app',
-    icon=None,
-    bundle_identifier='com.vidaldl.caughtup',
-    info_plist={
-        'CFBundleShortVersionString': '0.1',
-        'CFBundleVersion': '0.1',
-        'NSHighResolutionCapable': 'True',
-        'NSRequiresAquaSystemAppearance': 'False',
-        'CFBundleDisplayName': 'Course Backup Manager',
-        'CFBundleName': 'CaughtUP',
-        'NSPrincipalClass': 'NSApplication',  # Required for proper macOS app behavior
-        'LSMinimumSystemVersion': '10.13',    # Set minimum macOS version
-    }
-)
+# Platform-specific executable options
+if is_windows:
+    # Windows-specific options
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name='CaughtUP',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        icon='build_resources/icon.ico',  # Windows icon
+        version='build_resources/version_info.txt',  # Version info
+    )
+elif is_macos:
+    # macOS-specific options
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name='CaughtUP',
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=True,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=False,
+        disable_windowed_traceback=False,
+        argv_emulation=True,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+    
+    # macOS bundle configuration
+    app = BUNDLE(
+        exe,
+        name='CaughtUP.app',
+        icon='build_resources/icon.icns',  # macOS icon
+        bundle_identifier='com.vidaldl.caughtup',
+        info_plist={
+            'CFBundleShortVersionString': '0.1',
+            'CFBundleVersion': '0.1',
+            'NSHighResolutionCapable': 'True',
+            'NSRequiresAquaSystemAppearance': 'False',
+            'CFBundleDisplayName': 'Course Backup Manager',
+            'CFBundleName': 'CaughtUP',
+            'NSPrincipalClass': 'NSApplication',  # Required for proper macOS app behavior
+            'LSMinimumSystemVersion': '10.13',    # Set minimum macOS version
+        }
+    )
