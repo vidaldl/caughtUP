@@ -18,7 +18,7 @@ def get_app_data_dir(app_name='CaughtUP'):
     Returns the appropriate directory for storing application data
     based on the current platform.
     
-    Windows: %APPDATA%\CaughtUP (e.g., C:\Users\username\AppData\Roaming\CaughtUP)
+    Windows: %APPDATA%/CaughtUP (e.g., C:/Users/username/AppData/Roaming/CaughtUP)
     macOS: ~/Library/Application Support/CaughtUP
     Other: ~/.caughtup
     """
