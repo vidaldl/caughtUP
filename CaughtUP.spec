@@ -98,8 +98,8 @@ elif is_macos:
         icon='build_resources/icon.icns',  # macOS icon
         bundle_identifier='com.vidaldl.caughtup',
         info_plist={
-            'CFBundleShortVersionString': '0.1',
-            'CFBundleVersion': '0.1',
+            'CFBundleShortVersionString': '0.0.0',
+            'CFBundleVersion': '0.0.0',
             'NSHighResolutionCapable': 'True',
             'NSRequiresAquaSystemAppearance': 'False',
             'CFBundleDisplayName': 'Course Backup Manager',
