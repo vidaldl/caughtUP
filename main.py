@@ -7,21 +7,14 @@ import threading
 import atexit
 import logging
 
-# Fix working directory when running as app bundle
-if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-    # Running as bundled app
-    bundle_dir = os.path.dirname(sys.executable)
-    if '.app/Contents/MacOS' in bundle_dir:
-        # Running from .app bundle on macOS
-        os.chdir(os.path.abspath(os.path.dirname(bundle_dir.split('.app/Contents/MacOS')[0])))
+# Import platform utility functions
+from platform_utils import get_app_data_dir, get_logs_dir, setup_user_directories
+
+# Set up necessary directories for the application
+app_dirs = setup_user_directories()
+log_dir = app_dirs['logs_dir']
 
 # Configure logging
-if getattr(sys, 'frozen', False):
-    log_dir = os.path.join(os.path.expanduser("~"), "CaughtUP", "logs")
-else:
-    log_dir = os.path.abspath("logs")
-
-os.makedirs(log_dir, exist_ok=True)
 log_file = os.path.join(log_dir, "app.log")
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +24,9 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+
+logging.info(f"Application starting. Platform: {sys.platform}")
+logging.info(f"Application directories: {app_dirs}")
 
 def save_state_on_exit():
     try:
@@ -79,11 +75,18 @@ class LoadingWindow:
         if status_text:
             self.status_var.set(status_text)
         self.window.deiconify()
+        self.window.attributes('-topmost', True)  # Ensure it's on top
         self.progress.start(10)
         self.window.update()
         
     def update_status(self, text):
         self.status_var.set(text)
+        self.window.update()
+    
+    def prepare_for_dialog(self):
+        """Lower the window priority before showing dialogs"""
+        self.window.attributes('-topmost', False)
+        self.window.lower()  # Push the window below other windows
         self.window.update()
         
     def hide(self):
@@ -106,10 +109,18 @@ def main():
         try:
             # Now we import the heavy modules AFTER the UI is shown
             loading.show("Loading token manager...")
+            
+            # IMPORTANT: Lower the loading window priority before token dialogs may appear
+            loading.prepare_for_dialog()
+            
+            # Import and initialize token manager which may show dialogs
             from backup_manager.token_manager import TokenManager
             token_manager = TokenManager()
             
-            loading.update_status("Initializing interface...")
+            # Show loading window again after token dialog
+            loading.show("Initializing interface...")
+            
+            # Initialize main interface
             from gui.main_interface import MainInterface
             app = MainInterface(root, token_manager)
             

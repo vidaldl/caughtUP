@@ -4,46 +4,24 @@ import requests
 import logging
 from tkinter import simpledialog, messagebox
 import sys
-
-def get_resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller"""
-    try:
-        # PyInstaller creates a temp folder and stores path in _MEIPASS
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    
-    result = os.path.join(base_path, relative_path)
-    logging.info(f"Resource path for {relative_path}: {result}")
-    return result
+from platform_utils import get_app_data_dir, get_resource_path
 
 class TokenManager:
-    def __init__(self, token_file="resources/token.enc", key_file="resources/key.key"):
-        # Determine if running as an app bundle
-        if getattr(sys, 'frozen', False):
-            # Running as bundled app - use user's home directory for persistent files
-            self.resources_dir = os.path.join(os.path.expanduser("~"), "CaughtUP", "resources")
-            os.makedirs(self.resources_dir, exist_ok=True)
-            
-            self.token_file = os.path.join(self.resources_dir, os.path.basename(token_file))
-            self.key_file = os.path.join(self.resources_dir, os.path.basename(key_file))
-            self.config_file = os.path.join(self.resources_dir, "config.txt")
-        else:
-            # Running in development
-            self.resources_dir = os.path.dirname(token_file)
-            if not os.path.isabs(self.resources_dir):
-                self.resources_dir = os.path.abspath(self.resources_dir)
-                
-            self.token_file = os.path.abspath(token_file)
-            self.key_file = os.path.abspath(key_file)
-            self.config_file = os.path.join(self.resources_dir, "config.txt")
+    def __init__(self, token_file="token.enc", key_file="key.key"):
+        # Get the platform-appropriate application data directory
+        self.app_data_dir = get_app_data_dir()
+        self.resources_dir = os.path.join(self.app_data_dir, "resources")
+        os.makedirs(self.resources_dir, exist_ok=True)
+        
+        # Set file paths using the app data directory
+        self.token_file = os.path.join(self.resources_dir, token_file)
+        self.key_file = os.path.join(self.resources_dir, key_file)
+        self.config_file = os.path.join(self.resources_dir, "config.txt")
         
         logging.info(f"Resources directory: {self.resources_dir}")
         logging.info(f"Token file path: {self.token_file}")
         logging.info(f"Key file path: {self.key_file}")
         logging.info(f"Config file path: {self.config_file}")
-        
-        os.makedirs(self.resources_dir, exist_ok=True)
         
         self.base_url = None
         self.token = None
