@@ -75,11 +75,18 @@ class LoadingWindow:
         if status_text:
             self.status_var.set(status_text)
         self.window.deiconify()
+        self.window.attributes('-topmost', True)  # Ensure it's on top
         self.progress.start(10)
         self.window.update()
         
     def update_status(self, text):
         self.status_var.set(text)
+        self.window.update()
+    
+    def prepare_for_dialog(self):
+        """Lower the window priority before showing dialogs"""
+        self.window.attributes('-topmost', False)
+        self.window.lower()  # Push the window below other windows
         self.window.update()
         
     def hide(self):
@@ -102,10 +109,18 @@ def main():
         try:
             # Now we import the heavy modules AFTER the UI is shown
             loading.show("Loading token manager...")
+            
+            # IMPORTANT: Lower the loading window priority before token dialogs may appear
+            loading.prepare_for_dialog()
+            
+            # Import and initialize token manager which may show dialogs
             from backup_manager.token_manager import TokenManager
             token_manager = TokenManager()
             
-            loading.update_status("Initializing interface...")
+            # Show loading window again after token dialog
+            loading.show("Initializing interface...")
+            
+            # Initialize main interface
             from gui.main_interface import MainInterface
             app = MainInterface(root, token_manager)
             
