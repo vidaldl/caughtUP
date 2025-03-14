@@ -16,7 +16,6 @@ a = Analysis(
     datas=[
         # Include build resources in the bundle
         ('build_resources', 'build_resources'),
-        ('logs', 'logs'),
     ],
     # Only specify the exact imports needed
     hiddenimports=[

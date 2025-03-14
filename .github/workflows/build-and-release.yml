@@ -68,6 +68,10 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       
+      - name: Modify spec file to remove logs directory dependency
+        run: |
+          (Get-Content CaughtUP.spec) -replace "'logs', 'logs'", "'build_resources', 'build_resources'" | Set-Content CaughtUP.spec
+      
       - name: Build Windows executable
         run: |
           pyinstaller CaughtUP.spec
@@ -105,12 +109,9 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       
-      - name: Create required directories
+      - name: Modify spec file to remove logs directory dependency
         run: |
-          mkdir -p logs
-          mkdir -p build_resources
-          # Ensure any other directories specified in spec file exist
-          touch logs/.gitkeep
+          sed -i '' "s/'logs', 'logs'/'build_resources', 'build_resources'/g" CaughtUP.spec
       
       - name: Build macOS app
         run: |
