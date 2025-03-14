@@ -105,6 +105,13 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
       
+      - name: Create required directories
+        run: |
+          mkdir -p logs
+          mkdir -p build_resources
+          # Ensure any other directories specified in spec file exist
+          touch logs/.gitkeep
+      
       - name: Build macOS app
         run: |
           pyinstaller CaughtUP.spec

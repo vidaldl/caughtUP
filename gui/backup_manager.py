@@ -4,7 +4,7 @@ from tkinter import messagebox
 from backup_manager.api_handler import CanvasAPIHandler
 from backup_manager.backup_runner import BackupRunner
 import asyncio
-from platform_utils import get_app_data_dir
+from platform_utils import get_app_data_dir, ensure_backup_folder_configured
 
 class BackupManager:
     def __init__(self, main_interface, table):
@@ -32,10 +32,9 @@ class BackupManager:
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load backup directory: {e}")
         
-        # If no valid user directory found, use default in app data directory
-        default_dir = os.path.join(self.app_data_dir, "backups")
-        os.makedirs(default_dir, exist_ok=True)
-        return default_dir
+        # If no valid user directory found, use ensure_backup_folder_configured
+        # This will prompt the user only when actually needed for a backup operation
+        return ensure_backup_folder_configured()
 
     def start_backup(self):
         if self.is_running:
