@@ -105,3 +105,76 @@ def setup_user_directories():
         'logs_dir': logs_dir,
         'backups_dir': backups_dir
     }
+
+def ensure_backup_folder_configured():
+    """
+    Checks if a backup folder is configured, and prompts the user to select
+    one if it isn't. Returns the backup folder path.
+    """
+    from tkinter import filedialog, messagebox
+    
+    app_data_dir = get_app_data_dir()
+    config_file = os.path.join(app_data_dir, "resources", "config.txt")
+    
+    # Check if config file exists and has backup_folder
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, "r") as f:
+                for line in f:
+                    if line.startswith("backup_folder="):
+                        folder_path = line.strip().split("=", 1)[1]
+                        if os.path.exists(folder_path) and os.access(folder_path, os.W_OK):
+                            return folder_path
+        except Exception as e:
+            logging.warning(f"Failed to read backup_folder from config: {e}")
+    
+    # No valid backup folder found, prompt user
+    messagebox.showinfo(
+        "Backup Folder Required", 
+        "Please select a folder where course backups will be saved.\n"
+        "You can change this later in File > Change Default Backup Folder."
+    )
+    
+    while True:
+        folder = filedialog.askdirectory(title="Select Backup Folder")
+        
+        if not folder:  # User cancelled
+            # Use default in app data directory instead of forcing user selection
+            default_dir = os.path.join(app_data_dir, "backups")
+            os.makedirs(default_dir, exist_ok=True)
+            folder = default_dir
+            break
+            
+        if not os.access(folder, os.W_OK):
+            messagebox.showerror(
+                "Permission Denied", 
+                "The selected folder is not writable. Please choose a different folder."
+            )
+            continue
+            
+        # Valid folder selected
+        break
+        
+    # Save to config
+    resources_dir = os.path.join(app_data_dir, "resources")
+    os.makedirs(resources_dir, exist_ok=True)
+    
+    # Read existing config
+    lines = []
+    if os.path.exists(config_file):
+        with open(config_file, "r") as f:
+            lines = f.readlines()
+    
+    # Update or add backup_folder
+    backup_folder_written = False
+    with open(config_file, "w") as f:
+        for line in lines:
+            if line.startswith("backup_folder="):
+                f.write(f"backup_folder={folder}\n")
+                backup_folder_written = True
+            else:
+                f.write(line)
+        if not backup_folder_written:
+            f.write(f"backup_folder={folder}\n")
+    
+    return folder
