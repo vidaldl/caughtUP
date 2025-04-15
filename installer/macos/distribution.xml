@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>CaughtUP</title>
+    <organization>com.vidaldl</organization>
+    <domains enable_anywhere="true"/>
+    <options customize="never" require-scripts="true" hostArchitectures="x86_64,arm64"/>
+    
+    <welcome file="welcome.txt"/>
+    <background alignment="center" scaling="proportional"/>
+    
+    <pkg-ref id="com.vidaldl.caughtup"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.vidaldl.caughtup"/>
+        </line>
+    </choices-outline>
+    
+    <choice id="default"/>
+    <choice id="com.vidaldl.caughtup" visible="false">
+        <pkg-ref id="com.vidaldl.caughtup"/>
+    </choice>
+    
+    <pkg-ref id="com.vidaldl.caughtup" version="0" onConclusion="none">component.pkg</pkg-ref>
+</installer-gui-script>
