@@ -122,7 +122,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-          brew install create-dmg
+          brew install create-dmg || true
       
       - name: Modify spec file to remove logs directory dependency
         run: |
@@ -132,23 +132,19 @@ jobs:
         run: |
           pyinstaller CaughtUP.spec
       
-      # This step thoroughly removes all quarantine attributes
+      # This step removes quarantine attributes safely
       - name: Remove quarantine and extended attributes
         run: |
-          # First we use xattr -cr to recursively clear all attributes
-          xattr -cr dist/CaughtUP.app
-          
           # Make sure the binary is definitely executable
           chmod -R +x dist/CaughtUP.app/Contents/MacOS/
           
-          # For good measure, manually remove the specific quarantine attribute
-          find dist/CaughtUP.app -exec xattr -d com.apple.quarantine {} \; 2>/dev/null || true
+          # Clear all extended attributes if they exist (ignore errors)
+          xattr -cr dist/CaughtUP.app || true
           
-          # Check if the app has any remaining xattrs
-          echo "Checking for any remaining extended attributes:"
-          find dist/CaughtUP.app -exec xattr {} \; | grep -v "^$"
+          # For good measure, try to remove specific quarantine attribute (ignore errors)
+          xattr -d com.apple.quarantine dist/CaughtUP.app || true
       
-      # Create a DMG file instead of ZIP
+      # Create a simple DMG file
       - name: Create DMG
         run: |
           # Create a temporary directory for DMG contents
@@ -158,30 +154,22 @@ jobs:
           # Create a link to Applications folder
           ln -s /Applications dmg_temp/
           
-          # Create the DMG
-          create-dmg \
-            --volname "CaughtUP-${{ needs.create-release.outputs.version }}" \
-            --volicon "build_resources/icon.icns" \
-            --window-pos 200 120 \
-            --window-size 800 400 \
-            --icon-size 100 \
-            --icon "CaughtUP.app" 200 190 \
-            --hide-extension "CaughtUP.app" \
-            --app-drop-link 600 185 \
-            "CaughtUP-macOS.dmg" \
-            "dmg_temp/"
+          # Create the DMG using a simpler approach that's less likely to fail
+          hdiutil create -volname "CaughtUP-${{ needs.create-release.outputs.version }}" \
+            -srcfolder dmg_temp -ov -format UDZO \
+            CaughtUP-macOS.dmg
           
           # Verify the DMG was created
           ls -la CaughtUP-macOS.dmg
       
-      # Fix DMG permissions and attributes
+      # Fix DMG permissions
       - name: Fix DMG permissions
         run: |
-          # Remove quarantine from DMG
-          xattr -c CaughtUP-macOS.dmg
-          
           # Make sure DMG is readable
           chmod 644 CaughtUP-macOS.dmg
+          
+          # Try to remove quarantine from DMG (ignore errors)
+          xattr -c CaughtUP-macOS.dmg || true
       
       - name: Upload macOS artifact to release
         uses: actions/upload-release-asset@v1
