@@ -105,48 +105,48 @@ jobs:
           asset_content_type: application/zip
 
   build-macos:
-  needs: create-release
-  runs-on: macos-latest
-  steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pyinstaller
-    
-    - name: Modify spec file to remove logs directory dependency
-      run: |
-        sed -i '' "s/'logs', 'logs'/'build_resources', 'build_resources'/g" CaughtUP.spec
-    
-    - name: Build macOS app
-      run: |
-        pyinstaller CaughtUP.spec
-    
-    # Add this new step to remove quarantine attributes
-    - name: Remove quarantine and extended attributes
-      run: |
-        xattr -cr dist/CaughtUP.app
-        chmod +x dist/CaughtUP.app/Contents/MacOS/CaughtUP
-    
-    - name: Zip macOS artifact
-      run: |
-        ditto -c -k --keepParent dist/CaughtUP.app CaughtUP-macOS.zip
-    
-    - name: Upload macOS artifact to release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ needs.create-release.outputs.upload_url }}
-        asset_path: ./CaughtUP-macOS.zip
-        asset_name: CaughtUP-macOS-${{ needs.create-release.outputs.version }}.zip
-        asset_content_type: application/zip
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Modify spec file to remove logs directory dependency
+        run: |
+          sed -i '' "s/'logs', 'logs'/'build_resources', 'build_resources'/g" CaughtUP.spec
+      
+      - name: Build macOS app
+        run: |
+          pyinstaller CaughtUP.spec
+      
+      # Add this new step to remove quarantine attributes
+      - name: Remove quarantine and extended attributes
+        run: |
+          xattr -cr dist/CaughtUP.app
+          chmod +x dist/CaughtUP.app/Contents/MacOS/CaughtUP
+      
+      - name: Zip macOS artifact
+        run: |
+          ditto -c -k --keepParent dist/CaughtUP.app CaughtUP-macOS.zip
+      
+      - name: Upload macOS artifact to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: ./CaughtUP-macOS.zip
+          asset_name: CaughtUP-macOS-${{ needs.create-release.outputs.version }}.zip
+          asset_content_type: application/zip
