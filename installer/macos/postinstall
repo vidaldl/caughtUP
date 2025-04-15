@@ -1,0 +1,14 @@
+#!/bin/bash
+# Remove quarantine attributes
+xattr -cr "/Applications/CaughtUP.app" || true
+
+# Create a first-launch helper script
+cat > "/Applications/Open CaughtUP First Time.command" << 'EOL'
+#!/bin/bash
+echo "Opening CaughtUP for the first time..."
+xattr -cr "/Applications/CaughtUP.app"
+open "/Applications/CaughtUP.app"
+rm "$0"
+EOL
+
+chmod +x "/Applications/Open CaughtUP First Time.command"

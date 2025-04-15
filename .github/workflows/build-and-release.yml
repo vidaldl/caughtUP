@@ -39,29 +39,25 @@ jobs:
           draft: true
           prerelease: false
           body: |
-              ## CaughtUP Release v${{ steps.get_version.outputs.version }}
-              
-              Automated build from the main branch.
-              
-              ### Downloads
-              - Windows: CaughtUP-Windows-${{ steps.get_version.outputs.version }}.zip
-              - macOS: CaughtUP-macOS-${{ steps.get_version.outputs.version }}.zip
-              
-              ### macOS Installation Instructions
-              Due to Apple's security features (Gatekeeper), you'll need to follow these steps to open the app:
-              
-              1. Extract the zip file
-              2. Right-click (or Control+click) on CaughtUP.app
-              3. Select "Open" from the context menu
-              4. When the security warning appears, click "Open"
-              
-              If the above method doesn't work, open Terminal and run:
-              
-              ```bash
-              xattr -cr /path/to/CaughtUP.app
-              ```
-              Replace `/path/to/CaughtUP.app` with the actual path to the app.
-              *This is an automatically generated draft release. Please add release notes before publishing.*
+            ## CaughtUP Release v${{ steps.get_version.outputs.version }}
+        
+            Automated build from the main branch.
+            
+            ### Downloads
+            - Windows: CaughtUP-Windows-${{ steps.get_version.outputs.version }}.zip
+            - macOS: CaughtUP-macOS-${{ steps.get_version.outputs.version }}.pkg
+            
+            ### macOS Installation Instructions
+            1. Download the .pkg installer
+            2. Double-click to launch the installer
+            3. Follow the installation wizard
+            4. After installation, find "Open CaughtUP First Time.command" in Applications
+            5. Right-click on this file and select "Open"
+            6. When the security warning appears, click "Open"
+            
+            After first launch, you can open CaughtUP normally.
+            
+            *This is an automatically generated draft release. Please add release notes before publishing.*
 
   build-windows:
     needs: create-release
@@ -122,7 +118,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-          brew install create-dmg || true
       
       - name: Modify spec file to remove logs directory dependency
         run: |
@@ -132,51 +127,43 @@ jobs:
         run: |
           pyinstaller CaughtUP.spec
       
-      # This step removes quarantine attributes safely
-      - name: Remove quarantine and extended attributes
+      - name: Prepare installer resources
         run: |
-          # Make sure the binary is definitely executable
-          chmod -R +x dist/CaughtUP.app/Contents/MacOS/
+          # Create directories
+          mkdir -p pkg_resources
+          mkdir -p scripts
           
-          # Clear all extended attributes if they exist (ignore errors)
-          xattr -cr dist/CaughtUP.app || true
+          # Copy the postinstall script
+          cp installer/macos/postinstall scripts/
+          chmod +x scripts/postinstall
           
-          # For good measure, try to remove specific quarantine attribute (ignore errors)
-          xattr -d com.apple.quarantine dist/CaughtUP.app || true
+          # Copy the welcome text and update version
+          sed "s/VERSION/${{ needs.create-release.outputs.version }}/g" installer/macos/welcome.txt > pkg_resources/welcome.txt
+          
+          # Copy distribution.xml
+          cp installer/macos/distribution.xml ./
       
-      # Create a simple DMG file
-      - name: Create DMG
+      - name: Create PKG installer
         run: |
-          # Create a temporary directory for DMG contents
-          mkdir -p dmg_temp
-          cp -R dist/CaughtUP.app dmg_temp/
+          # Build component package
+          pkgbuild --root dist/ \
+                  --identifier com.vidaldl.caughtup \
+                  --version ${{ needs.create-release.outputs.version }} \
+                  --install-location /Applications \
+                  --scripts scripts \
+                  component.pkg
           
-          # Create a link to Applications folder
-          ln -s /Applications dmg_temp/
-          
-          # Create the DMG using a simpler approach that's less likely to fail
-          hdiutil create -volname "CaughtUP-${{ needs.create-release.outputs.version }}" \
-            -srcfolder dmg_temp -ov -format UDZO \
-            CaughtUP-macOS.dmg
-          
-          # Verify the DMG was created
-          ls -la CaughtUP-macOS.dmg
+          # Build distribution package
+          productbuild --distribution distribution.xml \
+                      --resources pkg_resources \
+                      CaughtUP-macOS.pkg
       
-      # Fix DMG permissions
-      - name: Fix DMG permissions
-        run: |
-          # Make sure DMG is readable
-          chmod 644 CaughtUP-macOS.dmg
-          
-          # Try to remove quarantine from DMG (ignore errors)
-          xattr -c CaughtUP-macOS.dmg || true
-      
-      - name: Upload macOS artifact to release
+      - name: Upload macOS installer
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./CaughtUP-macOS.dmg
-          asset_name: CaughtUP-macOS-${{ needs.create-release.outputs.version }}.dmg
-          asset_content_type: application/x-apple-diskimage
+          asset_path: ./CaughtUP-macOS.pkg
+          asset_name: CaughtUP-macOS-${{ needs.create-release.outputs.version }}.pkg
+          asset_content_type: application/x-newton-compatible-pkg
