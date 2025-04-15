@@ -39,15 +39,29 @@ jobs:
           draft: true
           prerelease: false
           body: |
-            ## CaughtUP Release v${{ steps.get_version.outputs.version }}
-            
-            Automated build from the main branch.
-            
-            ### Downloads
-            - Windows: CaughtUP-Windows-${{ steps.get_version.outputs.version }}.zip
-            - macOS: CaughtUP-macOS-${{ steps.get_version.outputs.version }}.zip
-            
-            *This is an automatically generated draft release. Please add release notes before publishing.*
+              ## CaughtUP Release v${{ steps.get_version.outputs.version }}
+              
+              Automated build from the main branch.
+              
+              ### Downloads
+              - Windows: CaughtUP-Windows-${{ steps.get_version.outputs.version }}.zip
+              - macOS: CaughtUP-macOS-${{ steps.get_version.outputs.version }}.zip
+              
+              ### macOS Installation Instructions
+              Due to Apple's security features (Gatekeeper), you'll need to follow these steps to open the app:
+              
+              1. Extract the zip file
+              2. Right-click (or Control+click) on CaughtUP.app
+              3. Select "Open" from the context menu
+              4. When the security warning appears, click "Open"
+              
+              If the above method doesn't work, open Terminal and run:
+              
+              ```bash
+              xattr -cr /path/to/CaughtUP.app
+              ```
+              Replace `/path/to/CaughtUP.app` with the actual path to the app.
+              *This is an automatically generated draft release. Please add release notes before publishing.*
 
   build-windows:
     needs: create-release
@@ -91,42 +105,48 @@ jobs:
           asset_content_type: application/zip
 
   build-macos:
-    needs: create-release
-    runs-on: macos-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-          cache: 'pip'
-      
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-      
-      - name: Modify spec file to remove logs directory dependency
-        run: |
-          sed -i '' "s/'logs', 'logs'/'build_resources', 'build_resources'/g" CaughtUP.spec
-      
-      - name: Build macOS app
-        run: |
-          pyinstaller CaughtUP.spec
-      
-      - name: Zip macOS artifact
-        run: |
-          ditto -c -k --keepParent dist/CaughtUP.app CaughtUP-macOS.zip
-      
-      - name: Upload macOS artifact to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./CaughtUP-macOS.zip
-          asset_name: CaughtUP-macOS-${{ needs.create-release.outputs.version }}.zip
-          asset_content_type: application/zip
+  needs: create-release
+  runs-on: macos-latest
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Modify spec file to remove logs directory dependency
+      run: |
+        sed -i '' "s/'logs', 'logs'/'build_resources', 'build_resources'/g" CaughtUP.spec
+    
+    - name: Build macOS app
+      run: |
+        pyinstaller CaughtUP.spec
+    
+    # Add this new step to remove quarantine attributes
+    - name: Remove quarantine and extended attributes
+      run: |
+        xattr -cr dist/CaughtUP.app
+        chmod +x dist/CaughtUP.app/Contents/MacOS/CaughtUP
+    
+    - name: Zip macOS artifact
+      run: |
+        ditto -c -k --keepParent dist/CaughtUP.app CaughtUP-macOS.zip
+    
+    - name: Upload macOS artifact to release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./CaughtUP-macOS.zip
+        asset_name: CaughtUP-macOS-${{ needs.create-release.outputs.version }}.zip
+        asset_content_type: application/zip
