@@ -105,5 +105,8 @@ elif is_macos:
             'CFBundleName': 'CaughtUP',
             'NSPrincipalClass': 'NSApplication',  # Required for proper macOS app behavior
             'LSMinimumSystemVersion': '10.13',    # Set minimum macOS version
+            'NSHumanReadableCopyright': 'Copyright © 2025 David Leo Vidal',
+            'NSAppleEventsUsageDescription': 'This app requires access to automate certain tasks',
+            'CFBundleDocumentTypes': [],  # Empty array to avoid errors
         }
     )
