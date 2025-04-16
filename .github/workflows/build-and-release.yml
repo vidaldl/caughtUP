@@ -148,7 +148,7 @@ jobs:
           echo "Checking for any remaining extended attributes:"
           find dist/CaughtUP.app -exec xattr {} \; | grep -v "^$"
       
-      # Create a DMG file instead of ZIP
+      # Create a DMG file instead of ZIPs
       - name: Create DMG
         run: |
           # Create a temporary directory for DMG contents
