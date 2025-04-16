@@ -132,21 +132,21 @@ jobs:
         run: |
           pyinstaller CaughtUP.spec
       
-      # This step removes quarantine attributes safely
-      - name: Remove quarantine and extended attributes
+      # Ad-Hoc signing step
+      - name: Ad-Hoc Sign the .app bundle
         run: |
-          # Make sure the binary is definitely executable
+          # Remove any existing signature
+          codesign --remove-signature "dist/CaughtUP.app" || true
+          
+          # Sign with ad-hoc signature (the dash "-" means ad-hoc signing)
+          codesign --force --deep --sign - --timestamp --options runtime "dist/CaughtUP.app"
+          
+          # Verify signature
+          codesign -vvv --deep --strict "dist/CaughtUP.app"
+          
+          # Make sure the binary is executable
           chmod -R +x dist/CaughtUP.app/Contents/MacOS/
-          
-          # Clear all extended attributes if they exist (ignore errors)
-          xattr -cr dist/CaughtUP.app || true
-          
-          # For good measure, try to remove specific quarantine attribute (ignore errors)
-          xattr -d com.apple.quarantine dist/CaughtUP.app || true
       
-
-      # Create a DMG file instead of ZIPs
-
       - name: Create DMG
         run: |
           # Create a temporary directory for DMG contents
@@ -164,14 +164,14 @@ jobs:
           # Verify the DMG was created
           ls -la CaughtUP-macOS.dmg
       
-      # Fix DMG permissions
-      - name: Fix DMG permissions
+      # Sign the DMG file
+      - name: Sign DMG
         run: |
+          # Sign the DMG with ad-hoc signature
+          codesign --force --sign - CaughtUP-macOS.dmg
+          
           # Make sure DMG is readable
           chmod 644 CaughtUP-macOS.dmg
-          
-          # Try to remove quarantine from DMG (ignore errors)
-          xattr -c CaughtUP-macOS.dmg || true
       
       - name: Upload macOS artifact to release
         uses: actions/upload-release-asset@v1
