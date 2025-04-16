@@ -144,7 +144,9 @@ jobs:
           # For good measure, try to remove specific quarantine attribute (ignore errors)
           xattr -d com.apple.quarantine dist/CaughtUP.app || true
       
-      # Create a simple DMG file
+
+      # Create a DMG file instead of ZIPs
+
       - name: Create DMG
         run: |
           # Create a temporary directory for DMG contents
