@@ -3,6 +3,7 @@ import platform
 import subprocess
 import logging
 import sys
+import ctypes  # Add this import if not already present
 
 def configure_platform_settings():
     """
@@ -21,8 +22,10 @@ def configure_platform_settings():
         logging.info("macOS detected. Attempting to disable App Nap.")
         _disable_app_nap()
     elif system == "Windows":
-        logging.info("Windows detected. Setting process priority to high.")
+        logging.info("Windows detected. Setting process priority and execution state.")
         _set_windows_foreground_priority()
+        # Add this call
+        prevent_windows_sleep()
     else:
         logging.warning(f"No specific settings required for platform: {system}")
 
@@ -39,26 +42,23 @@ def _is_windows_admin():
 def _disable_app_nap():
     """
     Disable App Nap on macOS using a safe system command.
+    Targets the app's bundle identifier.
     """
+    bundle_identifier = "com.vidaldl.caughtup"  # From your CaughtUP.spec file
     try:
         result = subprocess.run(
-            ["defaults", "write", "org.python.python", "NSAppSleepDisabled", "-bool", "YES"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            ["defaults", "write", bundle_identifier, "NSAppSleepDisabled", "-bool", "YES"],
+            capture_output=True, text=True
         )
         if result.returncode == 0:
-            logging.info("Successfully disabled App Nap using system defaults.")
+            logging.info(f"Successfully disabled App Nap for {bundle_identifier}.")
         else:
-            logging.warning(f"Failed to disable App Nap. Error: {result.stderr}")
+            logging.warning(f"Failed to disable App Nap for {bundle_identifier}. Error: {result.stderr.strip()}")
     except Exception as e:
         logging.error(f"Failed to disable App Nap due to an error: {e}", exc_info=True)
 
 def _set_windows_foreground_priority():
-    """
-    Set the Windows process priority to ensure tasks run in the foreground
-    even when the computer is locked.
-    """
+    """Sets process priority on Windows."""
     try:
         import ctypes
         from ctypes import wintypes
@@ -102,6 +102,35 @@ def _set_windows_foreground_priority():
 
     except Exception as e:
         logging.warning(f"Failed to set Windows process priority: {e}")
+
+def prevent_windows_sleep():
+    """
+    Prevents the system from entering sleep or hibernate mode on Windows.
+    """
+    if platform.system() == "Windows" and ctypes:
+        try:
+            ES_CONTINUOUS = 0x80000000
+            ES_SYSTEM_REQUIRED = 0x00000001
+            
+            # Prevent sleep
+            ctypes.windll.kernel32.SetThreadExecutionState(
+                ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+            )
+            logging.info("Successfully set thread execution state to prevent system sleep.")
+        except Exception as e:
+            logging.error(f"Failed to set thread execution state: {e}")
+
+def allow_windows_sleep():
+    """
+    Allows the system to sleep again by resetting the thread execution state.
+    """
+    if platform.system() == "Windows" and ctypes:
+        try:
+            ES_CONTINUOUS = 0x80000000
+            ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+            logging.info("Reset thread execution state to allow system sleep.")
+        except Exception as e:
+            logging.error(f"Failed to reset thread execution state: {e}")
 
 if __name__ == "__main__":
     configure_platform_settings()

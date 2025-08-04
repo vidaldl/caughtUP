@@ -1,21 +1,44 @@
 import os
-import time
+import sys  # Add this import
+import subprocess  # Add this import 
+import logging
+import asyncio
 from tkinter import messagebox
 from backup_manager.api_handler import CanvasAPIHandler
 from backup_manager.backup_runner import BackupRunner
-import asyncio
 from platform_utils import get_app_data_dir, ensure_backup_folder_configured
+from backup_manager.system_compat import prevent_windows_sleep, allow_windows_sleep  # Add this import
 
 class BackupManager:
     def __init__(self, main_interface, table):
         self.main_interface = main_interface
         self.table = table
         self.is_running = False
-        self.interrupted_items = set()
         self.api_handler = None
         self.backup_runner = None
         self.stop_event = asyncio.Event()
         self.app_data_dir = get_app_data_dir()
+        self.caffeinate_process = None  # Add this line
+
+    def _start_sleep_prevention(self):
+        """Starts platform-specific sleep prevention."""
+        if sys.platform == "darwin":  # macOS
+            try:
+                self.caffeinate_process = subprocess.Popen(["caffeinate", "-d", "-i", "-s"])
+                logging.info("Caffeinate process started to prevent system sleep.")
+            except FileNotFoundError:
+                logging.warning("caffeinate command not found. System may sleep during backup.")
+        elif sys.platform == "win32":  # Windows
+            prevent_windows_sleep()
+
+    def _stop_sleep_prevention(self):
+        """Stops platform-specific sleep prevention."""
+        if self.caffeinate_process:
+            self.caffeinate_process.terminate()
+            self.caffeinate_process = None
+            logging.info("Caffeinate process terminated.")
+        elif sys.platform == "win32":
+            allow_windows_sleep()
 
     def get_backup_directory(self):
         """Retrieve the user-selected backup directory from the config file."""
@@ -40,6 +63,7 @@ class BackupManager:
         if self.is_running:
             return
 
+        self._start_sleep_prevention()  # Add this line
         self.is_running = True
         self.stop_event.clear()  # Clear stop event
         self.main_interface.start_button.config(state="disabled")
@@ -51,21 +75,21 @@ class BackupManager:
         output_dir = self.get_backup_directory()  # Get the dynamic backup directory
 
         async def async_start_backup():
-            self.api_handler = CanvasAPIHandler(base_url, api_token)
-            self.backup_runner = BackupRunner(self.api_handler, output_dir, self.stop_event)  # Pass stop event
-
-            queue = asyncio.Queue()
-
-            # Populate the queue with data from the table
-            for item in self.table.get_children():
-                course_name = self.table.item(item)['values'][0]
-                course_id = self.table.item(item)['values'][1]
-                status = self.table.item(item)['values'][2]
-                if(status == "Pending" or status == "Failed" or status == "Stopped"):
-                    queue.put_nowait((course_name, course_id, self.status_callback))
-                    self.table.item(item, values=(course_name, course_id, "Queued", "0%"))
-
             try:
+                self.api_handler = CanvasAPIHandler(base_url, api_token)
+                self.backup_runner = BackupRunner(self.api_handler, output_dir, self.stop_event)  # Pass stop event
+
+                queue = asyncio.Queue()
+
+                # Populate the queue with data from the table
+                for item in self.table.get_children():
+                    course_name = self.table.item(item)['values'][0]
+                    course_id = self.table.item(item)['values'][1]
+                    status = self.table.item(item)['values'][2]
+                    if(status == "Pending" or status == "Failed" or status == "Stopped"):
+                        queue.put_nowait((course_name, course_id, self.status_callback))
+                        self.table.item(item, values=(course_name, course_id, "Queued", "0%"))
+
                 # Process the queue
                 await self.backup_runner.process_queue(queue)
             except Exception as e:
@@ -75,7 +99,9 @@ class BackupManager:
                 self.main_interface.start_button.config(state="normal")
                 self.main_interface.retry_button.config(state="normal")
                 self.main_interface.stop_button.config(state="disabled")
-                await self.api_handler.close_session()
+                if self.api_handler:
+                    await self.api_handler.close_session()
+                self._stop_sleep_prevention()  # Add this line
 
         asyncio.run(async_start_backup())
 
@@ -104,8 +130,10 @@ class BackupManager:
 
     def stop_backup(self):
         if self.is_running:
-            self.stop_event.set()  # Set stop event
+            self.stop_event.set()
             messagebox.showinfo("Stop Backup", "Backup process stopped by user.")
+        
+        self._stop_sleep_prevention()  # Add this line
         self.is_running = False
         self.main_interface.start_button.config(state="normal")
         self.main_interface.retry_button.config(state="normal")
