@@ -151,7 +151,9 @@ class MainInterface:
             if not messagebox.askyesno("Exit", "Tasks are running. Are you sure you want to exit?"):
                 return
         
+        # Ensure sleep prevention is stopped when closing the app
         self.backup_manager.stop_backup()
+        self.backup_manager._stop_sleep_prevention()  # Add this line
         self.root.destroy()
 
 if __name__ == "__main__":

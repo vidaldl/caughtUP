@@ -30,9 +30,21 @@ logging.info(f"Application directories: {app_dirs}")
 
 def save_state_on_exit():
     try:
+        # Terminate any caffeinate processes that might be running
+        if sys.platform == "darwin":
+            try:
+                import subprocess
+                subprocess.run(["pkill", "-x", "caffeinate"], check=False)
+                logging.info("Terminated any running caffeinate processes.")
+            except Exception as e:
+                logging.error(f"Failed to terminate caffeinate processes: {e}")
+                
         logging.info("Application state saved successfully.")
     except Exception as e:
         logging.error(f"Error while saving state: {e}")
+
+# Register the exit handler - add this before the main function
+atexit.register(save_state_on_exit)
 
 class LoadingWindow:
     def __init__(self, master):
@@ -97,9 +109,6 @@ def main():
     # Create the minimal root window without showing it
     root = tk.Tk()
     root.withdraw()
-    
-    # Register cleanup function
-    atexit.register(save_state_on_exit)
     
     # Create a loading window 
     loading = LoadingWindow(root)
