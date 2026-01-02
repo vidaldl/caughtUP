@@ -170,15 +170,27 @@ class BackupRunner:
 
     async def manage_backups(self, course_name: str):
         course_dir = os.path.join(self.output_dir, course_name)
-        backups = sorted(
-            [os.path.join(course_dir, f) for f in os.listdir(course_dir) if f.endswith(".zip")],
-            key=os.path.getctime,
-        )
+        try:
+            # Filter out AppleDouble/dot underscore files
+            backups = sorted(
+                [os.path.join(course_dir, f) for f in os.listdir(course_dir) 
+                 if f.endswith(".zip") and not f.startswith("._")],
+                key=os.path.getctime,
+            )
 
-        while len(backups) > 10:  # Retain only the 10 most recent backups
-            oldest_backup = backups.pop(0)
-            os.remove(oldest_backup)
-            logging.info(f"Deleted old backup: {oldest_backup}")
+            while len(backups) > 10:  # Retain only the 10 most recent backups
+                oldest_backup = backups.pop(0)
+                try:
+                    os.remove(oldest_backup)
+                    logging.info(f"Deleted old backup: {oldest_backup}")
+                except FileNotFoundError:
+                    logging.warning(f"Could not delete backup, file not found: {oldest_backup}")
+                except PermissionError:
+                    logging.warning(f"Permission denied when trying to delete: {oldest_backup}")
+                except Exception as e:
+                    logging.error(f"Error deleting backup {oldest_backup}: {e}")
+        except Exception as e:
+            logging.error(f"Error managing backups for {course_name}: {e}")
 
     async def process_queue(self, queue: asyncio.Queue):
         """Process tasks from the queue concurrently with a concurrency limit."""
