@@ -11,20 +11,28 @@ class CSVValidator:
         self.seen_course_ids = set()
         self.invalid_chars = re.compile(r'[<>:"/\\|?*]')  # Forbidden in filenames
 
-    def validate_and_sanitize(self) -> Tuple[bool, str, List[Dict]]:
-        """
-        Returns: 
-            (is_valid, error_message, sanitized_rows)
+    def validate_and_sanitize(self) -> Tuple[bool, str, List[Dict], List[Tuple[int, str, str]]]:
+        """Validate a CSV file and produce sanitised course information.
+
+        Returns:
+            Tuple containing:
+                - ``is_valid`` (bool): Whether validation succeeded.
+                - ``message`` (str): Description of the validation outcome.
+                - ``sanitized_rows`` (List[Dict]): Validated course rows with
+                  sanitized names.
+                - ``duplicate_courses`` (List[Tuple[int, str, str]]): Details of
+                  any duplicate courses encountered as ``(row_num, name,
+                  course_id)``.
         """
         try:
             with open(self.filepath, "r", encoding="utf-8-sig") as csvfile:
                 reader = csv.DictReader(csvfile)
-                sanitized_rows = []
-                duplicate_courses = []
+                sanitized_rows: List[Dict] = []
+                duplicate_courses: List[Tuple[int, str, str]] = []
 
                 # Validate header
                 if not reader.fieldnames or [col.strip() for col in reader.fieldnames[:2]] != ["Course Name", "Course URL"]:
-                    return False, "First two columns must be 'Course Name' and 'Course URL'", []
+                    return False, "First two columns must be 'Course Name' and 'Course URL'", [], []
 
                 # Process rows
                 for row_num, row in enumerate(reader, start=2):
@@ -66,14 +74,14 @@ class CSVValidator:
                     })
 
                 if not sanitized_rows:
-                    return False, "CSV contains no valid rows after sanitization", []
+                    return False, "CSV contains no valid rows after sanitization", [], duplicate_courses
 
                 return True, "CSV validated and sanitized", sanitized_rows, duplicate_courses
 
         except FileNotFoundError:
-            return False, f"File not found: {self.filepath}", []
+            return False, f"File not found: {self.filepath}", [], []
         except Exception as e:
-            return False, f"Validation error: {str(e)}", []
+            return False, f"Validation error: {str(e)}", [], []
 
     def _extract_course_id(self, url: str) -> str:
         """Extracts numeric course ID from URL"""
