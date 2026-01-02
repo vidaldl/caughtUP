@@ -19,7 +19,7 @@ The Course Backup Manager is a tool designed to automate the backup of course co
 1. **Clone the repository**:
     ```sh
     git clone https://github.com/vidaldl/caughtUP.git
-    cd course-backup-manager
+    cd CaughtUP
     ```
 
 2. **Create and activate a virtual environment**:
